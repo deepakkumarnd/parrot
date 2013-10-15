@@ -10,10 +10,11 @@ module Parrot
   class Parrot
     SUB_COMMANDS = %w( new build watch )
 
-    def initialize(args)
+    def initialize(args = [])
       @options = { quiet: false }
+
       OptionParser.new do |opts|
-        opts.on('-q', '--quiet', 'Quiet mode') { options[:quiet] = true }
+        opts.on('-q', '--quiet', 'Quiet mode') { @options[:quiet] = true }
         opts.on_tail('-v', '--version', 'Prints version information') { puts "Parrot #{VERSION}" and exit }
         opts.on_tail('-h', '--help', 'HELP TEXT') { puts 'Help message' and exit }
       end.parse!(args)
@@ -25,6 +26,10 @@ module Parrot
 
     def self.usage
       puts 'parrot <subcommand> options'
+    end
+
+    def quiet?
+      @options[:quiet]
     end
   end
 end
