@@ -21,6 +21,8 @@ module Parrot
 
       command = args.shift
       Parrot.usage and exit unless SUB_COMMANDS.include?(command)
+
+      @logger = ParrotLogger.new(@options[:quiet])
       Builder.new(command)
     end
 
