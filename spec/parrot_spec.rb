@@ -2,14 +2,14 @@ require 'spec_helper'
 
 describe Parrot do
   context 'Option -v' do
-    let(:args) { %w(-v) }
+    let(:args) { %w( -v ) }
     it 'displays version info' do
       Parrot::Parrot.new(args)
     end
   end
 
   context 'Option -h' do
-    let(:args) { %w(-h) }
+    let(:args) { %w( -h ) }
     it 'displays help message' do
       Parrot::Parrot.new(args)
     end
