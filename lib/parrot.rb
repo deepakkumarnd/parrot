@@ -5,8 +5,6 @@ require 'parrot/builder'
 require 'parrot/logger'
 
 module Parrot
-  require 'parrot/builder'
-
   class Parrot
     SUB_COMMANDS = %w( new build watch )
 
@@ -16,7 +14,7 @@ module Parrot
       command = args.shift
       exit_if_invalid(command)
       @logger = ParrotLogger.new(@options[:quiet])
-      Builder.new(command)
+      Builder.new(command, args)
     end
 
     def log(message)

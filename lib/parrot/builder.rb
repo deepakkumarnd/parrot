@@ -1,20 +1,36 @@
+require 'fileutils'
+
 module Parrot
 
   module Commands
     class NewCommand
-      def execute
-        puts 'creating new application'
+      def initialize(args=[])
+        @app_root = args.first
+        raise ArgumentError if @app_root.nil?
+      end
+
+      def run
+        puts 'creating new application #{@app_root}'
+        FileUtils.mkpath(@app_root)
       end
     end
 
     class BuildCommand
-      def execute
+      def initialize(args=[])
+        @args = args
+      end
+
+      def run
         puts 'building application'
       end
     end
 
     class WatchCommand
-      def execute
+      def initialize(args=[])
+        @args = args
+      end
+
+      def run
         puts 'watching application'
       end
     end
@@ -24,9 +40,11 @@ module Parrot
 
     include Commands
 
-    def initialize(command)
-      klass = to_command_class(command)
-      #klass.new
+    attr_reader :klass
+
+    def initialize(command, args=[])
+      @klass = to_command_class(command)
+      @klass.new(args).run
     end
 
     private
