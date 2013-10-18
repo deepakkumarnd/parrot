@@ -12,6 +12,12 @@ module Parrot
       def run
         puts 'creating new application #{@app_root}'
         FileUtils.mkpath(@app_root)
+        FileUtils.touch("#{@app_root}/index.slim")
+        FileUtils.mkpath("#{@app_root}/js")
+        FileUtils.touch("#{@app_root}/js/app.coffee")
+        FileUtils.mkpath("#{@app_root}/css")
+        FileUtils.touch("#{@app_root}/css/app.scss")
+        FileUtils.mkpath("#{@app_root}/images")
       end
     end
 
