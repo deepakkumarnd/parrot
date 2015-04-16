@@ -1,3 +1,5 @@
+$LOAD_PATH<< File.dirname(__FILE__)
+
 require 'optparse'
 
 require 'parrot/version'
@@ -7,6 +9,7 @@ require 'parrot/logger'
 module Parrot
   class Parrot
     SUB_COMMANDS = %w( new build watch )
+    Root = Dir.pwd
 
     def initialize(args = [])
       @options = { quiet: false }
@@ -26,8 +29,10 @@ module Parrot
     end
 
     def exit_if_invalid(command)
-      exit! if command.nil?
-      Parrot.usage; exit! unless SUB_COMMANDS.include?(command)
+      if command.nil? || !SUB_COMMANDS.include?(command)
+        Parrot.usage
+        exit!
+      end
     end
 
     def quiet?
@@ -40,7 +45,9 @@ module Parrot
       OptionParser.new do |opts|
         opts.on('-q', '--quiet', 'Quiet mode') { @options[:quiet] = true }
         opts.on_tail('-v', '--version', 'Prints version information') { puts("Parrot #{VERSION}") }
-        opts.on_tail('-h', '--help', 'HELP TEXT') { puts 'Help message' }
+        opts.on_tail('-h', '--help', 'HELP TEXT') do
+          puts 'Help message'
+        end
       end.parse!(args)
     end
   end

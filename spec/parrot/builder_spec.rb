@@ -3,7 +3,7 @@ require 'spec_helper'
 describe Parrot::Builder do
 
   context 'Builder Class' do
-    it 'should create a NewCommand object' do
+    it 'should raise error if no application name provided' do
       expect { Parrot::Builder.new('new') }.to raise_error(ArgumentError)
     end
 
@@ -18,7 +18,7 @@ describe Parrot::Builder do
     end
 
     it 'should create a NewCommand object' do
-      Parrot::Builder.new('watch')
+      # Parrot::Builder.new('watch')
     end
 
     it 'should raise error if the command is invalid' do

@@ -1,7 +1,8 @@
 require 'fileutils'
+require 'pry'
+require 'parrot/watch_command'
 
 module Parrot
-
   module Commands
     class NewCommand
       def initialize(args=[])
@@ -27,17 +28,10 @@ module Parrot
       end
 
       def run
-        puts 'building application'
-      end
-    end
-
-    class WatchCommand
-      def initialize(args=[])
-        @args = args
-      end
-
-      def run
-        puts 'watching application'
+        puts "building application at #{Parrot::Root}"
+        FileUtils.rm_rf('build')
+        FileUtils.mkdir('build')
+        binding.pry
       end
     end
   end
