@@ -24,6 +24,10 @@ module Parrot
     end
 
     class BuildCommand
+
+      require 'tilt'
+      require 'nokogiri'
+
       def initialize(args=[])
         @args = args
       end
@@ -32,6 +36,21 @@ module Parrot
         puts "Building application at #{Parrot::Root}"
         FileUtils.rm_rf('build')
         FileUtils.mkdir('build')
+
+        t = Tilt.new('index.slim')
+        text = t.render
+        f = File.open("build/index.html", "w+")
+        f.write(text)
+        f.close
+
+        html = Nokogiri::HTML(text)
+
+
+        images = html.css('link').map do |ln|
+          ln['href'] if ln['type'] =~ /\Aimage/
+        end.compact.uniq
+
+        images.each { |img| FileUtils.cp(img, "build/#{img}") }
       end
     end
   end
