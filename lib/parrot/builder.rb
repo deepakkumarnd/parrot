@@ -24,10 +24,9 @@ module Parrot
       end
 
       def run
-        puts "building application at #{Parrot::Root}"
+        puts "Building application at #{Parrot::Root}"
         FileUtils.rm_rf('build')
         FileUtils.mkdir('build')
-        binding.pry
       end
     end
   end
