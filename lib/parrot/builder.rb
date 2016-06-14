@@ -82,6 +82,26 @@ module Parrot
           file_name = file_name.split('.').first
           system("scss #{css_file} > build/css/#{file_name}.css")
         end
+
+        # compile js files using babel
+
+        js_files = html.css('script').map do |js|
+          js['src'] if js['type'] == "text/javascript"
+        end.compact.uniq
+
+        if js_files.count > 0
+          FileUtils.mkdir("build/js")
+        end
+
+        js_files.each do |js_file|
+          if js_file.start_with?('/')
+            js_file = js_file[1..-1]
+          end
+
+          file_name = File.basename(js_file)
+          file_name = file_name.split('.').first
+          system("babel #{js_file} --out-file build/js/#{file_name}.js")
+        end
       end
     end
   end
