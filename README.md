@@ -6,7 +6,7 @@ TODO: Write a gem description
 
 Add this line to your application's Gemfile:
 
-    gem 'parrot'
+    gem 'parrot', git: 'git@github.com:42races/parrot.git'
 
 And then execute:
 
@@ -17,6 +17,15 @@ Or install it yourself as:
     $ gem install parrot
 
 ## Usage
+
+**Creating a new html5 app**
+    
+    $ parrot new blog
+
+**Build to app**
+    
+    $ cd blog
+    $ parrot build
 
 TODO: Write usage instructions here
 
