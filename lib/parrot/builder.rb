@@ -1,6 +1,6 @@
 require 'fileutils'
 require 'pry'
-require 'parrot/watch_command'
+require 'parrot/serve_command'
 
 module Parrot
   module Commands
@@ -43,6 +43,8 @@ module Parrot
         f = File.open("build/index.html", "w+")
         f.write(text)
         f.close
+
+        FileUtils.cp('favicon.ico', "build/favicon.ico")
 
         # build html page
         html = Nokogiri::HTML(text)

@@ -8,7 +8,7 @@ require 'parrot/logger'
 
 module Parrot
   class Parrot
-    SUB_COMMANDS = %w( new build watch )
+    SUB_COMMANDS = %w( new build serve )
     Root = Dir.pwd
 
     def initialize(args = [])

@@ -4,27 +4,28 @@ require 'pp'
 
 module Parrot
   module Commands
-    class WatchCommand
+    class ServeCommand
       def initialize(args=[])
         @args = args
       end
 
       def run
         run_server
-        puts 'watching application at'
+        puts 'Started server at 8000'
       end
 
       private
 
       def run_server
-        server = WEBrick::HTTPServer.new :Port => 8000, :DocumentRoot => "#{Parrot::Root}/public"
+        server = WEBrick::HTTPServer.new :Port => 8000, :DocumentRoot => "#{Parrot::Root}/build"
+
         trap 'INT' do
           server.shutdown
         end
 
-        server.mount_proc '/' do |req, res|
-          res.body = handle_path(req.path)
-        end
+        # server.mount_proc '/' do |req, res|
+        #   res.body = handle_path(req.path)
+        # end
 
         server.start
       end
