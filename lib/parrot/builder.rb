@@ -37,20 +37,49 @@ module Parrot
         FileUtils.rm_rf('build')
         FileUtils.mkdir('build')
 
+        # build index page
         t = Tilt.new('index.slim')
         text = t.render
         f = File.open("build/index.html", "w+")
         f.write(text)
         f.close
 
+        # build html page
         html = Nokogiri::HTML(text)
 
-
+        # copy image resources
         images = html.css('link').map do |ln|
           ln['href'] if ln['type'] =~ /\Aimage/
         end.compact.uniq
 
-        images.each { |img| FileUtils.cp(img, "build/#{img}") }
+        images.each do |img|
+          if img.start_with?('/')
+            img = img[1..-1]
+          end
+
+          FileUtils.cp(img, "build/#{img}")
+        end
+
+        # compile and copy stylesheets
+
+        css = html.css('link').map do |ln|
+          ln['href'] if ln['type'] == 'text/css'
+        end.compact.uniq
+
+        if css.count > 0
+          FileUtils.mkdir("build/css")
+        end
+
+        css.each do |css_file|
+          if css_file.start_with?('/')
+            css_file = css_file[1..-1]
+          end
+
+          css_file.sub!('.css', '.scss')
+          file_name = File.basename(css_file)
+          file_name = file_name.split('.').first
+          system("scss #{css_file} > build/css/#{file_name}.css")
+        end
       end
     end
   end
