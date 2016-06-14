@@ -28,28 +28,23 @@ module Parrot
       require 'tilt'
       require 'nokogiri'
 
+      attr_accessor :html
+
       def initialize(args=[])
         @args = args
       end
 
-      def run
-        puts "Building application at #{Parrot::Root}"
-        FileUtils.rm_rf('build')
-        FileUtils.mkdir('build')
-
-        # build index page
+      def build_index_page
         t = Tilt.new('index.slim')
         text = t.render
         f = File.open("build/index.html", "w+")
         f.write(text)
         f.close
 
-        FileUtils.cp('favicon.ico', "build/favicon.ico")
+        @html = Nokogiri::HTML(text)
+      end
 
-        # build html page
-        html = Nokogiri::HTML(text)
-
-        # copy image resources
+      def copy_image_assets
         images = html.css('link').map do |ln|
           ln['href'] if ln['type'] =~ /\Aimage/
         end.compact.uniq
@@ -61,9 +56,9 @@ module Parrot
 
           FileUtils.cp(img, "build/#{img}")
         end
+      end
 
-        # compile and copy stylesheets
-
+      def compile_css
         css = html.css('link').map do |ln|
           ln['href'] if ln['type'] == 'text/css'
         end.compact.uniq
@@ -82,9 +77,9 @@ module Parrot
           file_name = file_name.split('.').first
           system("scss #{css_file} > build/css/#{file_name}.css")
         end
+      end
 
-        # compile js files using babel
-
+      def compile_js
         js_files = html.css('script').map do |js|
           js['src'] if js['type'] == "text/javascript"
         end.compact.uniq
@@ -102,6 +97,17 @@ module Parrot
           file_name = file_name.split('.').first
           system("babel #{js_file} --out-file build/js/#{file_name}.js")
         end
+      end
+
+      def run
+        puts "Building application at #{Parrot::Root}"
+        FileUtils.rm_rf('build')
+        FileUtils.mkdir('build')
+        build_index_page
+        FileUtils.cp('favicon.ico', "build/favicon.ico")
+        copy_image_assets
+        compile_css
+        compile_js
       end
     end
   end
