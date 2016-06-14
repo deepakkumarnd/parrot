@@ -27,7 +27,9 @@ Or install it yourself as:
     $ cd blog
     $ parrot build
 
-TODO: Write usage instructions here
+**Start server**
+
+    $ parrot serve
 
 ## Contributing
 
