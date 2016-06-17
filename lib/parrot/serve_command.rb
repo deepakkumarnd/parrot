@@ -1,6 +1,7 @@
 require 'webrick'
 require 'parrot/template_handler'
 require 'pp'
+require 'watchr'
 
 module Parrot
   module Commands
@@ -10,8 +11,12 @@ module Parrot
       end
 
       def run
+        Thread.new do
+          puts "Watching app"
+          watch_app
+        end
+
         run_server
-        puts 'Started server at 8000'
       end
 
       private
@@ -23,11 +28,22 @@ module Parrot
           server.shutdown
         end
 
-        # server.mount_proc '/' do |req, res|
-        #   res.body = handle_path(req.path)
-        # end
-
         server.start
+      end
+
+      def watch_app
+        ENV['HANDLER'] = `uname`.strip
+        watcher = Watchr::Script.new
+        all_files = Dir.glob("**/*").select { |item| File.file?(item) && !item.start_with?("build/")}.join('|')
+        script = Watchr::Script.new
+
+        script.watch(all_files) do |file|
+          puts "File changed #{file}"
+          BuildCommand.new.run
+        end
+
+        controller = Watchr::Controller.new(script, Watchr.handler.new)
+        controller.run
       end
 
       def handle_path(path)

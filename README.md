@@ -12,9 +12,9 @@ And then execute:
 
     $ bundle
 
-Or install it yourself as:
+You will need to have babel-cli installed to compile js files
 
-    $ gem install parrot
+    $ npm install --save-dev --global babel-cli
 
 ## Usage
 
@@ -42,5 +42,5 @@ Or install it yourself as:
 
 
 parrot new application_name
-parrot watch
+parrot serve
 parrot build
