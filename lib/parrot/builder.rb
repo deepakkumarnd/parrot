@@ -26,6 +26,7 @@ module Parrot
     class BuildCommand
 
       require 'tilt'
+      require 'slim'
       require 'nokogiri'
 
       attr_accessor :html
