@@ -1,6 +1,14 @@
 require 'fileutils'
 require 'pry'
 require 'parrot/serve_command'
+require 'pygments'
+require 'redcarpet'
+
+class HTMLwithPygments < Redcarpet::Render::HTML
+    def block_code(code, language)
+    Pygments.highlight(code, lexer: language)
+  end
+end
 
 module Parrot
   module Commands
@@ -100,6 +108,26 @@ module Parrot
         end
       end
 
+      def compile_posts
+        markdown = Redcarpet::Markdown.new(HTMLwithPygments, fenced_code_blocks: true)
+        posts = Dir.entries("posts").drop(2)
+
+        if posts.count > 0
+          FileUtils.mkdir("build/posts")
+        end
+
+        posts.each do |post|
+          puts "Processing #{post}"
+          md_text = File.read("posts/#{post}")
+          md_text = md_text.split('{% include JB/setup %}').last
+          html = markdown.render(md_text)
+          puts "build/posts/#{post.sub('.md', '.html')}"
+          f = File.open("build/posts/#{post.sub('.md', '.html')}", "w")
+          f.write(html)
+          f.close
+        end
+      end
+
       def run
         puts "Building application at #{Parrot::Root}"
         FileUtils.rm_rf('build')
@@ -109,6 +137,7 @@ module Parrot
         copy_image_assets
         compile_css
         compile_js
+        compile_posts
       end
     end
   end
