@@ -12,7 +12,7 @@ module Parrot
 
       def run
         Thread.new do
-          puts "Watching app"
+          puts 'Watching app'
           watch_app
         end
 

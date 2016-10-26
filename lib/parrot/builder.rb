@@ -5,7 +5,7 @@ require 'pygments'
 require 'redcarpet'
 
 class HTMLwithPygments < Redcarpet::Render::HTML
-    def block_code(code, language)
+  def block_code(code, language)
     Pygments.highlight(code, lexer: language)
   end
 end
@@ -46,7 +46,7 @@ module Parrot
       def build_index_page
         t = Tilt.new('index.slim')
         text = t.render
-        f = File.open("build/index.html", "w+")
+        f = File.open('build/index.html', 'w+')
         f.write(text)
         f.close
 
@@ -73,7 +73,7 @@ module Parrot
         end.compact.uniq
 
         if css.count > 0
-          FileUtils.mkdir("build/css")
+          FileUtils.mkdir('build/css')
         end
 
         css.each do |css_file|
@@ -90,11 +90,11 @@ module Parrot
 
       def compile_js
         js_files = html.css('script').map do |js|
-          js['src'] if js['type'] == "text/javascript"
+          js['src'] if js['type'] == 'text/javascript'
         end.compact.uniq
 
         if js_files.count > 0
-          FileUtils.mkdir("build/js")
+          FileUtils.mkdir('build/js')
         end
 
         js_files.each do |js_file|
@@ -110,10 +110,10 @@ module Parrot
 
       def compile_posts
         markdown = Redcarpet::Markdown.new(HTMLwithPygments, fenced_code_blocks: true)
-        posts = Dir.entries("posts").drop(2)
+        posts = Dir.entries('posts').drop(2)
 
         if posts.count > 0
-          FileUtils.mkdir("build/posts")
+          FileUtils.mkdir('build/posts')
         end
 
         posts.each do |post|
@@ -122,8 +122,13 @@ module Parrot
           md_text = md_text.split('{% include JB/setup %}').last
           html = markdown.render(md_text)
           puts "build/posts/#{post.sub('.md', '.html')}"
-          f = File.open("build/posts/#{post.sub('.md', '.html')}", "w")
-          f.write(html)
+          f = File.open("build/posts/#{post.sub('.md', '.html')}", 'w')
+
+          post_section = @html.create_element 'div'
+          post_section.inner_html = html
+          post_section.set_attribute :class, 'page-content'
+          @html.css('.page-content')[0].replace(post_section)
+          f.write(@html.to_s)
           f.close
         end
       end
@@ -133,7 +138,7 @@ module Parrot
         FileUtils.rm_rf('build')
         FileUtils.mkdir('build')
         build_index_page
-        FileUtils.cp('favicon.ico', "build/favicon.ico")
+        FileUtils.cp('favicon.ico', 'build/favicon.ico')
         copy_image_assets
         compile_css
         compile_js
