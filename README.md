@@ -1,6 +1,6 @@
 # Parrot
 
-TODO: Write a gem description
+Parrot is a static website build tool developed to create my own blog.
 
 ## Installation
 
@@ -38,9 +38,3 @@ You will need to have babel-cli installed to compile js files
 3. Commit your changes (`git commit -am 'Add some feature'`)
 4. Push to the branch (`git push origin my-new-feature`)
 5. Create new Pull Request
-
-
-
-parrot new application_name
-parrot serve
-parrot build
