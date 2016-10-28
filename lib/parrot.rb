@@ -3,7 +3,7 @@ $LOAD_PATH<< File.dirname(__FILE__)
 require 'optparse'
 
 require 'parrot/version'
-require 'parrot/builder'
+require 'parrot/runner'
 require 'parrot/logger'
 
 module Parrot
@@ -17,7 +17,7 @@ module Parrot
       command = args.shift
       exit_if_invalid(command)
       @logger = ParrotLogger.new(@options[:quiet])
-      Builder.new(command, args)
+      Runner.new(command, args)
     end
 
     def log(message)
