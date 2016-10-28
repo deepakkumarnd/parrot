@@ -39,6 +39,10 @@ module Parrot
       @options[:quiet]
     end
 
+    def self.root
+      Parrot::Root
+    end
+
     private
 
     def extract_options!(args)
