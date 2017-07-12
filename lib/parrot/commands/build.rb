@@ -41,6 +41,10 @@ module Parrot
 
           FileUtils.cp(img, "build/#{img}")
         end
+
+        if Dir.exist? 'images'
+          FileUtils.cp_r('images', "build/images")
+        end
       end
 
       def compile_css
@@ -89,9 +93,11 @@ module Parrot
         end
       end
 
-      def compile_posts
-        markdown = Redcarpet::Markdown.new(HTMLWithPygments, fenced_code_blocks: true)
+      def markdown
+        @markdown ||= Redcarpet::Markdown.new(HTMLWithPygments, fenced_code_blocks: true)
+      end
 
+      def compile_posts
         posts = Dir.entries('posts')
 
         posts.delete('.')

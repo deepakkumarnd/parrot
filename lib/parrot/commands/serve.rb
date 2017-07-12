@@ -36,7 +36,6 @@ module Parrot
         ENV['HANDLER'] = `uname`.strip
         watcher = Watchr::Script.new
         all_files = Dir.glob("**/*").select { |item| File.file?(item) && !item.start_with?("build/")}.join('|')
-        script = Watchr::Script.new
 
         @cache = FileCache.instance
 
@@ -45,19 +44,17 @@ module Parrot
           @cache.set(path)
         end
 
-        script.watch(all_files) do |file|
+        watcher.watch(all_files) do |file|
           puts "File changed #{file}"
           path = "#{Parrot.root}/#{file}"
 
           if @cache.changed? path
             @cache.set(path)
             BuildCommand.new.run
-          else
-            puts "No change identified"
           end
         end
 
-        controller = Watchr::Controller.new(script, Watchr.handler.new)
+        controller = Watchr::Controller.new(watcher, Watchr.handler.new)
         controller.run
       rescue Exception => e
         puts "Exception #{e.message}"
