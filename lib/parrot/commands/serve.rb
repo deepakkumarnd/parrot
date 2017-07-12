@@ -40,12 +40,9 @@ module Parrot
 
         @cache = FileCache.instance
 
-        puts all_files
-
         all_files.split('|').each do |file|
           path = "#{Parrot.root}/#{file}"
           @cache.set(path)
-          puts @cache.fetch(path)
         end
 
         script.watch(all_files) do |file|

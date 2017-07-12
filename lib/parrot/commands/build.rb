@@ -57,10 +57,15 @@ module Parrot
             css_file = css_file[1..-1]
           end
 
-          css_file.sub!('.css', '.scss')
           file_name = File.basename(css_file)
           file_name = file_name.split('.').first
-          system("scss #{css_file} > build/css/#{file_name}.css")
+
+          if File.exist? css_file
+            FileUtils.cp css_file, "build/css/#{file_name}.css"
+          else
+            css_file = css_file.sub('.css', '.scss')
+            system("scss #{css_file} > build/css/#{file_name}.css")
+          end
         end
       end
 
@@ -85,19 +90,23 @@ module Parrot
       end
 
       def compile_posts
-        markdown = Redcarpet::Markdown.new(HTMLWithPygments, fenced_code_blocks: false)
-        posts = Dir.entries('posts').drop(2)
+        markdown = Redcarpet::Markdown.new(HTMLWithPygments, fenced_code_blocks: true)
+
+        posts = Dir.entries('posts')
+
+        posts.delete('.')
+        posts.delete('..')
+
 
         if posts.count > 0
           FileUtils.mkdir('build/posts')
         end
 
         posts.each do |post|
-          puts "Processing #{post}"
           md_text = File.read("posts/#{post}")
           md_text = md_text.split('{% include JB/setup %}').last
           html = markdown.render(md_text)
-          puts "build/posts/#{post.sub('.md', '.html')}"
+
           f = File.open("build/posts/#{post.sub('.md', '.html')}", 'w')
 
           post_section = @html.create_element 'div'
