@@ -20,12 +20,12 @@ describe Parrot do
   context 'quiet mode' do
     let(:parrot) { Parrot::Parrot.new }
 
-    it 'will be not be quiet by default' do
+    it 'will not be quiet by default' do
       parrot = Parrot::Parrot.new
       parrot.should_not be_quiet
     end
 
-    it 'will be be quiet by on quiet option' do
+    it 'will be be quiet on quiet option' do
       args = %w( -q )
       parrot = Parrot::Parrot.new(args)
       parrot.should be_quiet

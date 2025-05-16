@@ -13,15 +13,15 @@ module Parrot
 
       def run
         puts "Creating new application #{@app_root}"
-        puts "Using skel from #{File.expand_path('../skel', __FILE__)}"
+        skeleton_path = File.expand_path('../../../../skel', __FILE__)
+        puts "Using skeleten from #{skeleton_path}"
 
-        if File.exists? @app_root
+        if Dir.exist? @app_root
           raise "Directory #{@app_root} already exists"
         end
 
-        FileUtils.cp_r(File.expand_path('../../../skel', __FILE__), @app_root)
-
-        system("cd #{@app_root}; tree")
+        puts "Copying skeleten from #{skeleton_path}"
+        FileUtils.cp_r(skeleton_path, @app_root)
       end
     end
   end

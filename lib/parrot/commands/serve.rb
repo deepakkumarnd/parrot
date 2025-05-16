@@ -23,7 +23,7 @@ module Parrot
       private
 
       def run_server
-        server = WEBrick::HTTPServer.new :Port => 8000, :DocumentRoot => "#{Parrot::Root}/build"
+        server = WEBrick::HTTPServer.new :Port => 8000, :DocumentRoot => "#{Parrot::Root}/public"
 
         trap 'INT' do
           server.shutdown
@@ -35,7 +35,7 @@ module Parrot
       def watch_app
         ENV['HANDLER'] = `uname`.strip
         watcher = Watchr::Script.new
-        all_files = Dir.glob("**/*").select { |item| File.file?(item) && !item.start_with?("build/")}.join('|')
+        all_files = Dir.glob("**/*").select { |item| File.file?(item) && !item.start_with?("public/")}.join('|')
 
         @cache = FileCache.instance
 

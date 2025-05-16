@@ -20,7 +20,7 @@ module Parrot
       end
 
       def build_index_page
-        t = Tilt.new('index.slim')
+        t = Tilt.new('index.erb')
         text = t.render
         f = File.open('build/index.html', 'w+')
         f.write(text)
@@ -75,11 +75,11 @@ module Parrot
 
       def compile_js
         js_files = html.css('script').map do |js|
-          js['src'] if js['type'] == 'text/javascript'
+          js['src'] if js['type'] == 'text/javascripts'
         end.compact.uniq
 
         if js_files.count > 0
-          FileUtils.mkdir('build/js')
+          FileUtils.mkdir('build/javascripts')
         end
 
         js_files.each do |js_file|
@@ -89,7 +89,7 @@ module Parrot
 
           file_name = File.basename(js_file)
           file_name = file_name.split('.').first
-          system("babel #{js_file} --out-file build/js/#{file_name}.js")
+          system("babel #{js_file} --out-file build/javascripts/#{file_name}.javascripts")
         end
       end
 

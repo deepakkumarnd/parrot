@@ -31,6 +31,12 @@ You will need to have babel-cli installed to compile js files
 
     $ parrot serve
 
+## Testing
+
+    $ rspec spec
+    $ rspec -f d    # view test with description
+    $ rspec -f d --tag focus  # run only focussed sections, usefull for debugging
+
 ## Contributing
 
 1. Fork it

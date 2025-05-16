@@ -15,11 +15,15 @@ module Parrot
 
     include Commands
 
-    attr_reader :klass
+    attr_reader :command
 
     def initialize(command, args=[])
-      @klass = to_command_class(command)
-      @klass.new(args).run
+      klass = to_command_class(command)
+      @command = klass.new(args)
+    end
+
+    def run_command
+      @command.run
     end
 
     private

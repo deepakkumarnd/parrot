@@ -17,7 +17,7 @@ module Parrot
       command = args.shift
       exit_if_invalid(command)
       @logger = ParrotLogger.new(@options[:quiet])
-      Runner.new(command, args)
+      Runner.new(command, args).run_command
     end
 
     def log(message)
@@ -25,7 +25,7 @@ module Parrot
     end
 
     def self.usage
-      puts 'Usage: parrot <subcommand> options'
+      puts "Usage: parrot #{SUB_COMMANDS.join('|')} options"
     end
 
     def exit_if_invalid(command)
