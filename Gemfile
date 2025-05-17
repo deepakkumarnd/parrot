@@ -3,7 +3,7 @@ source 'https://rubygems.org'
 # Specify your gem's dependencies in parrot.gemspec
 
 gem 'tilt'
-gem 'sass'
+gem 'sassc'
 gem 'rspec'
 gem 'watchr'
 gem 'redcarpet'

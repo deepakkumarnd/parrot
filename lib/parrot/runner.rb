@@ -3,11 +3,11 @@ require_relative 'commands/new'
 require_relative 'commands/build'
 require_relative 'commands/serve'
 
-class HTMLWithPygments < Redcarpet::Render::HTML
-  # def block_code(code, language)
-  #   Pygments.highlight(code, :formatter => 'terminal')
-  # end
-end
+# class HTMLWithPygments < Redcarpet::Render::HTML
+#   def block_code(code, language)
+#     Pygments.highlight(code, :formatter => 'terminal')
+#   end
+# end
 
 module Parrot
 

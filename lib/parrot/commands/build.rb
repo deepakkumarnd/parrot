@@ -1,8 +1,6 @@
-require 'pygments'
-require 'redcarpet'
 require 'tilt'
-require 'slim'
 require 'nokogiri'
+require 'sassc'
 
 module Parrot
 
@@ -13,12 +11,13 @@ module Parrot
     # The build files will be kept in the build directory
     class BuildCommand
 
-      attr_accessor :html, :app_root, :config
+      attr_accessor :app_root, :config, :build_path
 
-      def initialize(args=[], config)
+      def initialize(args = [], config)
         @config = config
         @args = args
         @app_root = @config.root_dir
+        @build_path = File.join(app_root, "public")
       end
 
       def build_index_page
@@ -29,113 +28,96 @@ module Parrot
           index.render
         end
 
-        f = File.open("#{app_root}/public/index.html", 'w+')
-        f.write(text)
-        f.close
-
-        self.html = Nokogiri::HTML(text)
+        html = update_internal_links(text)
+        copy_image_assets(html)
+        File.write(File.join(build_path, "index.html"), html)
       end
 
-      def copy_image_assets
-        images = html.css('link').map do |ln|
-          ln['href'] if ln['type'] =~ /\Aimage/
-        end.compact.uniq
+      def build_posts
+        layout = Tilt.new("#{app_root}/views/layout.html.erb")
 
-        images.each do |img|
-          if img.start_with?('/')
-            img = img[1..-1]
+        Dir["#{app_root}/views/posts/*.md"].each do |post_path|
+          text = layout.render do
+            post = Tilt.new(post_path)
+            post.render
           end
 
-          FileUtils.cp(img, "#{app_root}/public/#{img}")
+          html = update_internal_links(text)
+          copy_image_assets(html)
+
+          File.write(File.join(build_path, File.basename(post_path).sub('.md', '.html')), html)
+        end
+      end
+
+      def update_internal_links(text)
+        html = Nokogiri::HTML(text)
+
+        html.css("a").each do |link|
+          if link['href'].start_with?("#") && link['href'].end_with?(".md")
+            link['href'] = link['href'][1..].sub('.md', '.html')
+          end
         end
 
-        if Dir.exist? 'images'
-          FileUtils.cp_r('images', "build/images")
+        html
+      end
+
+      def copy_image_assets(html)
+        images = html.css("img, link")
+
+        if images.size > 0
+          FileUtils.mkdir_p(File.join(build_path, "images"))
+
+          images.each do |img|
+            next if img["src"].nil?
+
+            source_path = File.join(app_root, img["src"])
+
+            if img["src"].start_with?("images/") && File.exist?(source_path)
+              FileUtils.cp(source_path, File.join(build_path, "images"))
+            end
+          end
         end
       end
 
       def compile_css
-        css = html.css('link').map do |ln|
-          ln['href'] if ln['type'] == 'text/css'
-        end.compact.uniq
+        css_files = Dir[File.join(File.join(app_root, "css"), '**', '*.{scss,css}')]
+        combined_scss = css_files.map { |file| File.read(file) }.join("\n")
 
-        css.each do |css_file|
-          if css_file.start_with?('/')
-            css_file = css_file[1..-1]
-          end
+        begin
+          engine = SassC::Engine.new(
+            combined_scss,
+            style: :compressed,
+            syntax: :scss
+          )
 
-          file_name = File.basename(css_file)
-          file_name = file_name.split('.').first
+          compiled_css = engine.render
 
-          if File.exist? css_file
-            FileUtils.cp css_file, "#{app_root}/public/#{file_name}.css"
-          else
-            css_file = css_file.sub('.css', '.scss')
-            system("scss #{css_file} > build/css/#{file_name}.css")
-          end
+          # Write to output file
+          target_path = File.join(build_path, "app.css")
+          File.write(File.join(build_path, "app.css"), compiled_css)
+          config.logger.info "Compiled and minified CSS written to #{target_path}"
+        rescue SassC::SyntaxError => e
+          puts "SassC Compilation Error: #{e.message}"
         end
       end
 
       def compile_js
-        js_files = html.css('script').map do |js|
-          js['src'] if js['type'] == 'text/javascripts'
-        end.compact.uniq
-
-        if js_files.count > 0
-          FileUtils.mkdir('build/javascripts')
-        end
-
-        js_files.each do |js_file|
-          if js_file.start_with?('/')
-            js_file = js_file[1..-1]
-          end
-
-          file_name = File.basename(js_file)
-          file_name = file_name.split('.').first
-          system("babel #{js_file} --out-file build/javascripts/#{file_name}.javascripts")
-        end
+        FileUtils.cp(File.join(app_root, "javascripts", "app.js"), File.join(build_path))
+        config.logger.info "Copied app.js to #{build_path}"
       end
 
-      def markdown
-        @markdown ||= Redcarpet::Markdown.new(HTMLWithPygments, fenced_code_blocks: true)
-      end
-
-      def compile_posts
-        posts = Dir.entries('posts')
-
-        posts.delete('.')
-        posts.delete('..')
-
-
-        if posts.count > 0
-          FileUtils.mkdir('build/posts')
-        end
-
-        posts.each do |post|
-          md_text = File.read("posts/#{post}")
-          md_text = md_text.split('{% include JB/setup %}').last
-          html = markdown.render(md_text)
-
-          f = File.open("build/posts/#{post.sub('.md', '.html')}", 'w')
-
-          post_section = @html.create_element 'div'
-          post_section.inner_html = html
-          post_section.set_attribute :class, 'page-content'
-          @html.css('.page-content')[0].replace(post_section)
-          f.write(@html.to_s)
-          f.close
-        end
-      end
+      # def markdown
+      #   @markdown ||= Redcarpet::Markdown.new(HTMLWithPygments, fenced_code_blocks: true)
+      # end
 
       def run
         config.logger.info "Building application at #{app_root}"
         FileUtils.rm_rf('public')
         FileUtils.mkdir('public')
         build_index_page
-        # copy_image_assets
-        # compile_css
-        # compile_js
-        # compile_posts
+        build_posts
+        compile_css
+        compile_js
       end
     end
   end
