@@ -5,7 +5,7 @@ describe Parrot do
     let(:args) { %w( -v ) }
 
     it 'displays version info' do
-      Parrot::Parrot.new(args)
+      Parrot::Parrot.new(args).run
     end
   end
 
@@ -13,13 +13,11 @@ describe Parrot do
     let(:args) { %w( -h ) }
 
     it 'displays help message' do
-      Parrot::Parrot.new(args)
+      Parrot::Parrot.new(args).run
     end
   end
 
   context 'quiet mode' do
-    let(:parrot) { Parrot::Parrot.new }
-
     it 'will not be quiet by default' do
       parrot = Parrot::Parrot.new
       parrot.should_not be_quiet

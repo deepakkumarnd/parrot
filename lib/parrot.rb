@@ -25,7 +25,7 @@ module Parrot
 
     def run
       exit_if_invalid(@command)
-      Runner.new(@command, @args, self.config)
+      Runner.new(@command, @args, self.config).run_command
     end
 
     def self.usage
@@ -48,7 +48,10 @@ module Parrot
     def extract_options!(args)
       OptionParser.new do |opts|
         opts.on('-q', '--quiet', 'Quiet mode') { @options[:quiet] = true }
-        opts.on_tail('-v', '--version', 'Prints version information') { puts("Parrot #{VERSION}") }
+        opts.on_tail('-v', '--version', 'Prints version information') do
+          puts("Parrot #{VERSION}")
+          exit(0)
+        end
         opts.on_tail('-h', '--help', 'Usage instructions') do
           puts(Parrot.usage)
           puts(

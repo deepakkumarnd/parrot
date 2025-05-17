@@ -6,22 +6,24 @@ module Parrot
     # @usage parrot new myblog
     class NewCommand
 
+      attr_reader :config, :app_root
+
       def initialize(args=[], config)
         @config = config
         @app_root = args.first
-        raise ArgumentError if @app_root.nil?
+        raise ArgumentError if @app_root.nil? || @config.nil?
       end
 
       def run
-        puts "Creating new application #{@app_root}"
+        config.logger.info "Creating new application #{app_root}"
         skeleton_path = File.expand_path('../../../../skel', __FILE__)
-        puts "Using skeleten from #{skeleton_path}"
+        config.logger.info "Using skeleten from #{skeleton_path}"
 
         if Dir.exist? @app_root
           raise "Directory #{@app_root} already exists"
         end
 
-        puts "Copying skeleten from #{skeleton_path}"
+        config.logger.info "Copying skeleten from #{skeleton_path}"
         FileUtils.cp_r(skeleton_path, @app_root)
       end
     end

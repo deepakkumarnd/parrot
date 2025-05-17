@@ -13,21 +13,27 @@ module Parrot
     # The build files will be kept in the build directory
     class BuildCommand
 
-      attr_accessor :html
+      attr_accessor :html, :app_root, :config
 
       def initialize(args=[], config)
         @config = config
         @args = args
+        @app_root = @config.root_dir
       end
 
       def build_index_page
-        t = Tilt.new('index.erb')
-        text = t.render
-        f = File.open('build/index.html', 'w+')
+        layout = Tilt.new("#{app_root}/views/layout.html.erb")
+
+        text = layout.render do
+          index = Tilt.new("#{app_root}/views/index.md")
+          index.render
+        end
+
+        f = File.open("#{app_root}/public/index.html", 'w+')
         f.write(text)
         f.close
 
-        @html = Nokogiri::HTML(text)
+        self.html = Nokogiri::HTML(text)
       end
 
       def copy_image_assets
@@ -40,7 +46,7 @@ module Parrot
             img = img[1..-1]
           end
 
-          FileUtils.cp(img, "build/#{img}")
+          FileUtils.cp(img, "#{app_root}/public/#{img}")
         end
 
         if Dir.exist? 'images'
@@ -53,10 +59,6 @@ module Parrot
           ln['href'] if ln['type'] == 'text/css'
         end.compact.uniq
 
-        if css.count > 0
-          FileUtils.mkdir('build/css')
-        end
-
         css.each do |css_file|
           if css_file.start_with?('/')
             css_file = css_file[1..-1]
@@ -66,7 +68,7 @@ module Parrot
           file_name = file_name.split('.').first
 
           if File.exist? css_file
-            FileUtils.cp css_file, "build/css/#{file_name}.css"
+            FileUtils.cp css_file, "#{app_root}/public/#{file_name}.css"
           else
             css_file = css_file.sub('.css', '.scss')
             system("scss #{css_file} > build/css/#{file_name}.css")
@@ -126,15 +128,14 @@ module Parrot
       end
 
       def run
-        puts "Building application at #{Parrot::Root}"
-        FileUtils.rm_rf('build')
-        FileUtils.mkdir('build')
+        config.logger.info "Building application at #{app_root}"
+        FileUtils.rm_rf('public')
+        FileUtils.mkdir('public')
         build_index_page
-        FileUtils.cp('favicon.ico', 'build/favicon.ico')
-        copy_image_assets
-        compile_css
-        compile_js
-        compile_posts
+        # copy_image_assets
+        # compile_css
+        # compile_js
+        # compile_posts
       end
     end
   end
