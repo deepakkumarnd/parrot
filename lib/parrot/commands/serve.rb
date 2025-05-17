@@ -51,7 +51,7 @@ module Parrot
 
         watcher.watch(all_files.join("|")) do |file|
           config.logger.info "File changed #{file}"
-          path = "#{document_root}/#{file}"
+          path = "#{app_root}/#{file}"
 
           if @cache.changed? path
             @cache.set(path)
