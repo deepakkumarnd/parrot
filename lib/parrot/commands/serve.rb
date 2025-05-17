@@ -7,8 +7,11 @@ require_relative '../file_cache'
 module Parrot
   module Commands
     class ServeCommand
-      def initialize(args=[])
+      def initialize(args=[], config)
+        @config = config
         @args = args
+        @document_root = "#{config.root_dir}/public"
+        @port = 8000
       end
 
       def run
@@ -23,7 +26,7 @@ module Parrot
       private
 
       def run_server
-        server = WEBrick::HTTPServer.new :Port => 8000, :DocumentRoot => "#{Parrot::Root}/public"
+        server = WEBrick::HTTPServer.new :Port => @port, :DocumentRoot => @document_root
 
         trap 'INT' do
           server.shutdown

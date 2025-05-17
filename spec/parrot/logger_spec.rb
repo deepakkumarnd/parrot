@@ -1,15 +1,15 @@
 require 'spec_helper'
 
-describe Parrot::ParrotLogger do
+describe Parrot::ParrotLoggerBuilder do
 
-  let(:parrot_logger) { Parrot::ParrotLogger.new(false) }
+  let(:parrot_logger) { Parrot::ParrotLoggerBuilder.new(false) }
 
   it 'is an instance of Logger' do
-    parrot_logger.logger.class.should == Logger
+    expect(parrot_logger.logger).to be_an_instance_of(Logger)
   end
 
   it 'has a log method' do
-    parrot_logger.should respond_to(:log)
+    expect(parrot_logger).to respond_to(:log)
   end
 
   it 'logs a message to stdout by default' do
@@ -18,18 +18,18 @@ describe Parrot::ParrotLogger do
   end
 
   it 'sets the instance variable @logger' do
-    parrot_logger.instance_variable_defined?(:@logger).should be true
+    expect(parrot_logger.instance_variable_defined?(:@logger)).to be true
   end
 
   it 'sets the instance variable @device' do
-    parrot_logger.instance_variable_defined?(:@device).should be true
+    expect(parrot_logger.instance_variable_defined?(:@device)).to be true
   end
 
   it 'sets the log device as STDOUT by default' do
-    parrot_logger.device.should == STDOUT
+    expect(parrot_logger.device).to eq(STDOUT)
   end
 
   it 'sets the log device as a file if the quiet mode is turned on' do
-    Parrot::ParrotLogger.new(quiet = true).device.class.should == File
+    expect(Parrot::ParrotLoggerBuilder.new(quiet = true).device).to be_a File
   end
 end

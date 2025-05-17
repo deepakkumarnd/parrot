@@ -7,30 +7,34 @@ require 'parrot/runner'
 require 'parrot/logger'
 
 module Parrot
+
+  Config = Struct.new(:root_dir, :logger)
   class Parrot
     SUB_COMMANDS = %w( new build serve )
-    Root = Dir.pwd
 
+    attr_accessor :root_dir, :logger, :config
     def initialize(args = [])
       @options = { quiet: false }
       extract_options!(args)
-      command = args.shift
-      exit_if_invalid(command)
-      @logger = ParrotLogger.new(@options[:quiet])
-      Runner.new(command, args).run_command
+      @command = args.shift
+      @args = args
+      @logger = ParrotLoggerBuilder.new(@options[:quiet]).logger
+      @root_dir = Dir.pwd
+      @config = Config.new(@root_dir, @logger)
     end
 
-    def log(message)
-      @logger.log(message)
+    def run
+      exit_if_invalid(@command)
+      Runner.new(@command, @args, self.config)
     end
 
     def self.usage
-      puts "Usage: parrot #{SUB_COMMANDS.join('|')} options"
+      "Usage: parrot <#{SUB_COMMANDS.join('|')}> options"
     end
 
     def exit_if_invalid(command)
       if command.nil? || !SUB_COMMANDS.include?(command)
-        Parrot.usage
+        puts(Parrot.usage)
         exit!
       end
     end
@@ -39,18 +43,30 @@ module Parrot
       @options[:quiet]
     end
 
-    def self.root
-      Parrot::Root
-    end
-
     private
 
     def extract_options!(args)
       OptionParser.new do |opts|
         opts.on('-q', '--quiet', 'Quiet mode') { @options[:quiet] = true }
         opts.on_tail('-v', '--version', 'Prints version information') { puts("Parrot #{VERSION}") }
-        opts.on_tail('-h', '--help', 'HELP TEXT') do
-          puts 'Help message'
+        opts.on_tail('-h', '--help', 'Usage instructions') do
+          puts(Parrot.usage)
+          puts(
+            """
+            Create a new blog
+
+            $ parrot new blog
+
+            Start the server
+
+            $ cd blog
+            $ parrot serve
+
+            Build the blog
+
+            $ parrot build
+            """)
+          exit(0)
         end
       end.parse!(args)
     end

@@ -15,7 +15,8 @@ module Parrot
 
       attr_accessor :html
 
-      def initialize(args=[])
+      def initialize(args=[], config)
+        @config = config
         @args = args
       end
 

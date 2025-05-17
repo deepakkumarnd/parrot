@@ -17,9 +17,10 @@ module Parrot
 
     attr_reader :command
 
-    def initialize(command, args=[])
+    def initialize(command, args=[], parrot)
+      @parrot = parrot
       klass = to_command_class(command)
-      @command = klass.new(args)
+      @command = klass.new(args, @parrot)
     end
 
     def run_command

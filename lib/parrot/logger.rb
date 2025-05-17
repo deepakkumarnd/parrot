@@ -1,7 +1,7 @@
 require 'logger'
 
 module Parrot
-  class ParrotLogger
+  class ParrotLoggerBuilder
 
     attr_reader :logger, :device
 

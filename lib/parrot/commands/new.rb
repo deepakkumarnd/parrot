@@ -6,7 +6,8 @@ module Parrot
     # @usage parrot new myblog
     class NewCommand
 
-      def initialize(args=[])
+      def initialize(args=[], config)
+        @config = config
         @app_root = args.first
         raise ArgumentError if @app_root.nil?
       end
