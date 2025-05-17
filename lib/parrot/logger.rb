@@ -9,7 +9,7 @@ module Parrot
       @device = quiet ? File.new('parrot.log', 'a+') : STDOUT
       # shift_age = 10, keep 10 log files
       # shift_size = 1048576, maximum 1 MB of log file size
-      @logger = Logger.new(@device, shift_age=10, shift_size=1048576, progname: self.class.name)
+      @logger = Logger.new(@device, shift_age=10, shift_size=1048576, progname: 'ParrotLogger')
     end
 
     def log(message)
