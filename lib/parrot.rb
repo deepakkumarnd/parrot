@@ -5,6 +5,7 @@ require 'optparse'
 require 'parrot/version'
 require 'parrot/runner'
 require 'parrot/logger'
+require 'parrot/constants'
 
 module Parrot
 

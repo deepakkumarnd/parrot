@@ -1,6 +1,7 @@
 require 'tilt'
 require 'nokogiri'
 require 'sassc'
+require 'tilt/kramdown'
 
 module Parrot
 
@@ -38,12 +39,13 @@ module Parrot
 
         Dir["#{app_root}/views/posts/*.md"].each do |post_path|
           text = layout.render do
-            post = Tilt.new(post_path)
+            post = markdown(post_path)
             post.render
           end
 
           html = update_internal_links(text)
           copy_image_assets(html)
+          html = inject_scripts(html)
 
           File.write(File.join(build_path, File.basename(post_path).sub('.md', '.html')), html)
         end
@@ -58,6 +60,16 @@ module Parrot
           end
         end
 
+        html
+      end
+
+      def inject_scripts(html)
+        script_tag = Nokogiri::XML::Node.new("script", html)
+        script_tag['src'] = MATHJAX_URL
+        script_tag['async'] = 'true' # optional attribute
+        script_tag.content = "" # Needed to close the tag properly
+        # Append the <script> tag to the <body>
+        html.at('body') << script_tag
         html
       end
 
@@ -105,11 +117,6 @@ module Parrot
         FileUtils.cp(File.join(app_root, "javascripts", "app.js"), File.join(build_path))
         config.logger.info "Copied app.js to #{build_path}"
       end
-
-      # def markdown
-      #   @markdown ||= Redcarpet::Markdown.new(HTMLWithPygments, fenced_code_blocks: true)
-      # end
-
       def run
         config.logger.info "Building application at #{app_root}"
         FileUtils.rm_rf('public')
@@ -118,6 +125,18 @@ module Parrot
         build_posts
         compile_css
         compile_js
+      end
+
+      private
+
+      def markdown(file)
+        # markdown containing latex commands
+        Tilt::KramdownTemplate.new(
+          math_engine: 'mathjax',
+          math_engine_opts: { format: [:html] }
+        ) do
+          File.read(file)
+        end
       end
     end
   end
