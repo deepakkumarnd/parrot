@@ -15,17 +15,23 @@ Gem::Specification.new do |spec|
   # --- AUTOMATIC DEPENDENCY INJECTION ---
   # Define which gems are strictly for development / testing
   dev_gems = %w[rspec watchr pry]
+  # Force Bundler to locate the absolute path of the Gemfile relative to this gemspec file
+  gemfile_path = File.expand_with_path('../Gemfile', __FILE__)
 
-  Bundler.definition.dependencies.each do |dep|
-    next if dep.name == spec.name # Prevent self-dependency
+  if File.exist?(gemfile_path)
+    # Load the specific definition safely
+    definition = Bundler::Definition.build(gemfile_path, nil, nil)
+    
+    definition.dependencies.each do |dep|
+      next if dep.name == spec.name
 
-    if dev_gems.include?(dep.name)
-      spec.add_development_dependency(dep.name, dep.requirement)
-    else
-      spec.add_dependency(dep.name, dep.requirement)
+      if dev_gems.include?(dep.name)
+        spec.add_development_dependency(dep.name, dep.requirement)
+      else
+        spec.add_dependency(dep.name, dep.requirement)
+      end
     end
   end
-  # ---------------------------------------
 
   spec.files         = `git ls-files`.split($/)
   spec.executables   = spec.files.grep(%r{^bin/}) { |f| File.basename(f) }
