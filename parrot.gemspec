@@ -10,6 +10,9 @@ Gem::Specification.new do |spec|
   spec.summary       = %q{ A build web front end build tool for ruby lovers using slim, coffee and scss }
   spec.homepage      = 'github.com/42races/parrot'
   spec.license       = 'MIT'
+  spec.add_dependency 'tilt'
+  spec.add_dependency 'nokogiri'
+  spec.add_dependency 'sassc'
 
   spec.files         = `git ls-files`.split($/)
   spec.executables   = spec.files.grep(%r{^bin/}) { |f| File.basename(f) }
