@@ -1,20 +1,31 @@
 # coding: utf-8
 require_relative 'lib/parrot/version'
+require 'bundler'
 
 Gem::Specification.new do |spec|
   spec.name          = 'parrot'
   spec.version       = Parrot::VERSION
   spec.authors       = %w(Deepak)
   spec.email         = %w(deepakkumarnd@gmail.com)
-  spec.description   = %q{ A build web front end build tool for ruby lovers using slim, coffee and scss }
-  spec.summary       = %q{ A build web front end build tool for ruby lovers using slim, coffee and scss }
+  spec.description   = %q{ A simple website/blog builder for ruby lovers }
+  spec.summary       = %q{ A simple website/blog builder for ruby lovers }
   spec.homepage      = 'github.com/42races/parrot'
   spec.license       = 'MIT'
-  spec.add_dependency 'tilt'
-  spec.add_dependency 'nokogiri'
-  spec.add_dependency 'sassc'
-  spec.add_dependency 'kramdown'
-  spec.add_dependency 'webrick'
+
+  # --- AUTOMATIC DEPENDENCY INJECTION ---
+  # Define which gems are strictly for development / testing
+  dev_gems = %w[rspec watchr pry]
+
+  Bundler.definition.dependencies.each do |dep|
+    next if dep.name == spec.name # Prevent self-dependency
+
+    if dev_gems.include?(dep.name)
+      spec.add_development_dependency(dep.name, dep.requirement)
+    else
+      spec.add_dependency(dep.name, dep.requirement)
+    end
+  end
+  # ---------------------------------------
 
   spec.files         = `git ls-files`.split($/)
   spec.executables   = spec.files.grep(%r{^bin/}) { |f| File.basename(f) }
