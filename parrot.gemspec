@@ -16,7 +16,7 @@ Gem::Specification.new do |spec|
   # Define which gems are strictly for development / testing
   dev_gems = %w[rspec watchr pry]
   # Force Bundler to locate the absolute path of the Gemfile relative to this gemspec file
-  gemfile_path = File.expand_with_path('../Gemfile', __FILE__)
+  gemfile_path = File.expand_path('../Gemfile', __FILE__)
 
   if File.exist?(gemfile_path)
     # Load the specific definition safely
