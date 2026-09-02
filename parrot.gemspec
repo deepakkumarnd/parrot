@@ -13,6 +13,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'tilt'
   spec.add_dependency 'nokogiri'
   spec.add_dependency 'sassc'
+  spec.add_dependency 'kramdown'
 
   spec.files         = `git ls-files`.split($/)
   spec.executables   = spec.files.grep(%r{^bin/}) { |f| File.basename(f) }
