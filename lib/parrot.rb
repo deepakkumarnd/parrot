@@ -1,11 +1,9 @@
-$LOAD_PATH<< File.dirname(__FILE__)
-
 require 'optparse'
 
-require 'parrot/version'
-require 'parrot/runner'
-require 'parrot/logger'
-require 'parrot/constants'
+require_relative 'parrot/version'
+require_relative 'parrot/runner'
+require_relative 'parrot/logger'
+require_relative 'parrot/constants'
 
 module Parrot
 

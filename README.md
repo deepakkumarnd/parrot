@@ -6,7 +6,7 @@ Parrot is a static website build tool developed to create my own blog.
 
 Add this line to your application's Gemfile:
 
-    gem 'parrot', git: 'git@github.com:42races/parrot.git'
+    gem 'parrot', git: 'git@github.com:deepakkumarnd/parrot.git'
 
 And then execute:
 

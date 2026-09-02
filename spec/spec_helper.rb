@@ -1,2 +1,2 @@
 require 'pry'
-require './lib/parrot'
+require_relative '../lib/parrot'

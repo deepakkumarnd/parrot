@@ -1,5 +1,5 @@
 require 'webrick'
-require 'parrot/template_handler'
+require_relative '../template_handler'
 require 'pp'
 require 'watchr'
 require_relative '../file_cache'
