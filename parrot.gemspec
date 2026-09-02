@@ -1,6 +1,5 @@
 # coding: utf-8
 require_relative 'lib/parrot/version'
-require 'bundler'
 
 Gem::Specification.new do |spec|
   spec.name          = 'parrot'
@@ -12,26 +11,28 @@ Gem::Specification.new do |spec|
   spec.homepage      = 'github.com/42races/parrot'
   spec.license       = 'MIT'
 
-  # --- AUTOMATIC DEPENDENCY INJECTION ---
-  # Define which gems are strictly for development / testing
-  dev_gems = %w[rspec watchr pry]
-  # Force Bundler to locate the absolute path of the Gemfile relative to this gemspec file
+  # --- LOOP-SAFE PURE TEXT GEMFILE PARSING ---
   gemfile_path = File.expand_path('../Gemfile', __FILE__)
 
   if File.exist?(gemfile_path)
-    # Safely parse the text content of the Gemfile without triggering environment side-effects
-    dsl = Bundler::Dsl.evaluate(gemfile_path, nil, nil)
-    
-    dsl.dependencies.each do |dep|
-      next if dep.name == spec.name
+    # Define which gems are strictly for development / testing
+    dev_gems = %w[rspec watchr pry]
 
-      if dev_gems.include?(dep.name)
-        spec.add_development_dependency(dep.name, dep.requirement)
-      else
-        spec.add_dependency(dep.name, dep.requirement)
+    File.readlines(gemfile_path).each do |line|
+      # Match lines that look like: gem 'name' or gem "name"
+      if line =~ /^\s*gem\s+['"]([^'"]+)['"]/
+        gem_name = $1
+        next if gem_name == spec.name # Prevent self-dependency loop
+
+        if dev_gems.include?(gem_name)
+          spec.add_development_dependency(gem_name)
+        else
+          spec.add_dependency(gem_name)
+        end
       end
     end
   end
+  # --------------------------------------------
 
   spec.files         = `git ls-files`.split($/)
   spec.executables   = spec.files.grep(%r{^bin/}) { |f| File.basename(f) }
