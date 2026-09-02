@@ -19,10 +19,10 @@ Gem::Specification.new do |spec|
   gemfile_path = File.expand_path('../Gemfile', __FILE__)
 
   if File.exist?(gemfile_path)
-    # Load the specific definition safely
-    definition = Bundler::Definition.build(gemfile_path, nil, nil)
+    # Safely parse the text content of the Gemfile without triggering environment side-effects
+    dsl = Bundler::Dsl.evaluate(gemfile_path, nil, nil)
     
-    definition.dependencies.each do |dep|
+    dsl.dependencies.each do |dep|
       next if dep.name == spec.name
 
       if dev_gems.include?(dep.name)
