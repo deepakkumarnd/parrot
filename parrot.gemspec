@@ -10,29 +10,14 @@ Gem::Specification.new do |spec|
   spec.summary       = %q{ A simple website/blog builder for ruby lovers }
   spec.homepage      = 'github.com/42races/parrot'
   spec.license       = 'MIT'
-
-  # --- LOOP-SAFE PURE TEXT GEMFILE PARSING ---
-  gemfile_path = File.expand_path('../Gemfile', __FILE__)
-
-  if File.exist?(gemfile_path)
-    # Define which gems are strictly for development / testing
-    dev_gems = %w[rspec watchr pry]
-
-    File.readlines(gemfile_path).each do |line|
-      # Match lines that look like: gem 'name' or gem "name"
-      if line =~ /^\s*gem\s+['"]([^'"]+)['"]/
-        gem_name = $1
-        next if gem_name == spec.name # Prevent self-dependency loop
-
-        if dev_gems.include?(gem_name)
-          spec.add_development_dependency(gem_name)
-        else
-          spec.add_dependency(gem_name)
-        end
-      end
-    end
-  end
-  # --------------------------------------------
+  
+  spec.add_dependency  'tilt'
+  spec.add_dependency  'sassc'
+  spec.add_dependency  'watchr'
+  spec.add_dependency  'nokogiri'
+  spec.add_dependency  'webrick'
+  spec.add_dependency  'kramdown'
+  spec.add_dependency  'logger'
 
   spec.files         = `git ls-files`.split($/)
   spec.executables   = spec.files.grep(%r{^bin/}) { |f| File.basename(f) }
