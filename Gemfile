@@ -1,8 +1,4 @@
 source 'https://rubygems.org'
 
-# Specify your gem's dependencies in parrot.gemspec
-
+# All runtime and development dependencies are defined in parrot.gemspec
 gemspec
-
-gem 'rspec'
-gem 'pry'
