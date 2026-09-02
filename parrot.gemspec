@@ -19,6 +19,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'webrick'
   spec.add_dependency 'kramdown'
   spec.add_dependency 'logger'
+  spec.add_dependency 'observer'
 
   # File Management
   spec.files         = `git ls-files`.split($/)
