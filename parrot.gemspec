@@ -18,6 +18,8 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'nokogiri'
   spec.add_dependency 'webrick'
   spec.add_dependency 'kramdown'
+  spec.add_dependency 'kramdown-parser-gfm'
+  spec.add_dependency 'rouge'
   spec.add_dependency 'logger'
   spec.add_dependency 'observer'
 
