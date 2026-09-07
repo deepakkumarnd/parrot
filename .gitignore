@@ -18,3 +18,6 @@ test/version_tmp
 tmp
 blog/
 *.log
+
+# Incremental-build checksum written into a blog's build directory
+public/.checksum

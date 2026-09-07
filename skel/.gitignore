@@ -1,0 +1,3 @@
+# Incremental-build checksum. Regenerated on every `parrot serve`; never
+# commit it and never ship it with the built site.
+public/.checksum

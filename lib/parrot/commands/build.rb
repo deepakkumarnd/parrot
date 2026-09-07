@@ -49,24 +49,30 @@ module Parrot
 
         html = update_internal_links(text)
         copy_image_assets(html)
-        File.write(File.join(build_path, "index.html"), html)
+
+        output = File.join(build_path, "index.html")
+        File.write(output, html)
+        config.logger.info "Built #{output}"
       end
 
       def build_posts
+        Dir["#{app_root}/views/posts/*.md"].each { |post_path| build_post(post_path) }
+      end
+
+      def build_post(post_path)
         layout = Tilt.new("#{app_root}/views/layout.html.erb")
 
-        Dir["#{app_root}/views/posts/*.md"].each do |post_path|
-          text = layout.render do
-            post = markdown(post_path)
-            post.render
-          end
-
-          html = update_internal_links(text)
-          copy_image_assets(html)
-          html = inject_scripts(html)
-
-          File.write(File.join(build_path, File.basename(post_path).sub('.md', '.html')), html)
+        text = layout.render do
+          markdown(post_path).render
         end
+
+        html = update_internal_links(text)
+        copy_image_assets(html)
+        html = inject_scripts(html)
+
+        output = File.join(build_path, File.basename(post_path).sub('.md', '.html'))
+        File.write(output, html)
+        config.logger.info "Built #{output}"
       end
 
       def update_internal_links(text)
@@ -92,21 +98,22 @@ module Parrot
       end
 
       def copy_image_assets(html)
-        images = html.css("img, link")
+        html.css("img, link").each do |img|
+          next if img["src"].nil?
 
-        if images.size > 0
-          FileUtils.mkdir_p(File.join(build_path, "images"))
+          source_path = File.join(app_root, img["src"])
 
-          images.each do |img|
-            next if img["src"].nil?
-
-            source_path = File.join(app_root, img["src"])
-
-            if img["src"].start_with?("images/") && File.exist?(source_path)
-              FileUtils.cp(source_path, File.join(build_path, "images"))
-            end
+          if img["src"].start_with?("images/") && File.exist?(source_path)
+            copy_image(source_path)
           end
         end
+      end
+
+      def copy_image(source_path)
+        target_dir = File.join(build_path, "images")
+        FileUtils.mkdir_p(target_dir)
+        FileUtils.cp(source_path, target_dir)
+        config.logger.info "Copied #{File.basename(source_path)} to #{target_dir}"
       end
 
       def compile_css
@@ -145,7 +152,48 @@ module Parrot
         compile_js
       end
 
+      # Rebuild a single file. Used by the file watcher, so `file` may be an
+      # existing watched file or one that was just added; it may be given as an
+      # absolute path or relative to the app root, as a String or as the
+      # MatchData watchr hands its callbacks. The build strategy is picked from
+      # where the file lives.
+      def build(file)
+        config.logger.info "Building changed file at #{file}"
+        path = File.expand_path(file.to_s, app_root)
+        relative = path.sub(%r{\A#{Regexp.escape(app_root)}/?}, "")
+
+        FileUtils.mkdir_p(build_path)
+
+        case relative
+        when "views/layout.html.erb"
+          # The layout wraps every page, so everything is rebuilt.
+          build_index_page
+          build_posts
+        when "views/index.md"
+          build_index_page
+        when %r{\Aviews/posts/[^/]+\.md\z}
+          File.exist?(path) ? build_post(path) : remove_built_post(path)
+        when %r{\Acss/.+\.(scss|css)\z}
+          # css is concatenated before compiling, so a single change recompiles all.
+          compile_css
+        when "javascripts/app.js"
+          compile_js
+        when %r{\Aimages/[^/]+\z}
+          copy_image(path) if File.exist?(path)
+        else
+          config.logger.info "No build strategy for #{relative}, skipping"
+        end
+      end
+
       private
+
+      def remove_built_post(post_path)
+        output = File.join(build_path, File.basename(post_path).sub('.md', '.html'))
+        return unless File.exist?(output)
+
+        File.delete(output)
+        config.logger.info "Removed #{output}"
+      end
 
       # Colour rules for the fenced code blocks kramdown/rouge produced. Scoped
       # to .highlighter-rouge (rouge's wrapper) so the theme's background and
