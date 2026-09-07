@@ -1,48 +1,55 @@
-# Parrot
+# About Parrot
 
-Parrot is a static website build tool developed to create my own blog.
+Parrot turns a folder of Markdown into a static blog. This post is also a
+cheat sheet: it shows the formatting you can use in any `views/posts/*.md`
+file.
 
-## Installation
+## Headings and text
 
-Add this line to your application's Gemfile:
+Use `#` for the post title and `##` / `###` for sections, like the ones on
+this page. Inline styles work too: **bold**, _italic_, and `inline code`.
 
-    gem 'parrot', git: 'git@github.com:42races/parrot.git'
+## Code blocks
 
-And then execute:
+Tag a fenced block with a language and Parrot highlights it (Monokai theme by
+default — change `HIGHLIGHT_THEME` in `lib/parrot/constants.rb`):
 
-    $ bundle
+```ruby
+class Greeter
+  def initialize(name)
+    @name = name
+  end
 
-You will need to have babel-cli installed to compile js files
+  def greet
+    puts "Hello, #{@name}!"
+  end
+end
 
-    $ npm install --save-dev --global babel-cli
+Greeter.new("Parrot").greet
+```
 
-## Usage
+```bash
+parrot new blog
+cd blog
+parrot serve
+```
 
-**Creating a new html5 app**
+An untagged, indented block renders as plain preformatted text:
 
-    $ parrot new blog
-
-**Build to app**
-
-    $ cd blog
     $ parrot build
 
-**Start server**
+## Math
 
-    $ parrot serve
+LaTeX between `$$ … $$` is rendered with MathJax. Inline, it flows with the
+sentence: $$e^{i\pi} + 1 = 0$$.
 
-## Testing
+On its own line it becomes a display block:
 
-    $ rspec spec
-    $ rspec -f d    # view test with description
-    $ rspec -f d --tag focus  # run only focussed sections, usefull for debugging
+$$
+W = W - \text{lr} \cdot \frac{\partial L}{\partial W}
+$$
 
-## Contributing
+## Links between posts
 
-[github](https://github.com/deepakkumarnd/parrot)
-
-1. Fork it
-2. Create your feature branch (`git checkout -b my-new-feature`)
-3. Commit your changes (`git commit -am 'Add some feature'`)
-4. Push to the branch (`git push origin my-new-feature`)
-5. Create new Pull Request
+Link to another post by its Markdown filename and Parrot rewrites it to the
+built page at build time: [read the next post](#post2.md).

@@ -1,4 +1,4 @@
 ## Post listing
 
-- [post1](#post1.md)
-- [post2](#post2.md)
+- [About Parrot](#post1.md)
+- [Your post](#post2.md)
