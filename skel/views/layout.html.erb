@@ -18,25 +18,36 @@
   <link rel="stylesheet" href="https://cdn.simplecss.org/simple.min.css">
   <link rel="stylesheet" href="app.css">
   <script src="app.js" defer></script>
+  <link rel="alternate" type="application/rss+xml" title="Parrot" href="feed.xml">
+  <meta name="generator" content="Parrot">
+  <meta name="author" content="Your name">
+  <!-- Site-wide fallback description. Each post overrides it from its header
+       `description` (or its first paragraph) at build time. -->
+  <meta name="description" content="A blog built with Parrot.">
   <!-- Set this to your site's URL. Parrot appends each page's path when building. -->
   <meta property="og:url" content="https://example.com">
   <link rel="canonical" href="https://example.com">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Parrot">
   <meta property="og:title" content="Parrot">
+  <meta property="og:description" content="A blog built with Parrot.">
+  <meta property="og:locale" content="en_US">
   <!-- Link-preview image. A relative images/… path is copied to the build and
        rewritten to an absolute URL; you can also use a full URL. -->
   <meta property="og:image" content="images/parrot.jpeg">
   <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:description" content="A blog built with Parrot.">
   <title>Parrot</title>
 </head>
 <body>
   <header>
-    <h1>Your name</h1>
+    <a class="site-name" href="/">Your name</a>
     <p>Your tagline</p>
   </header>
 
-  <%= yield %>
+  <main>
+    <%= yield %>
+  </main>
 
   <footer>
     Made with love using <a href="https://github.com/deepakkumarnd/parrot">Parrot</a>

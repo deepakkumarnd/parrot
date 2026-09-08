@@ -100,6 +100,70 @@ describe Parrot::Commands do
         expect(File.exist?('blog/public/images/favicon.ico')).to be true
         expect(File.exist?('blog/public/images/favicon.svg')).to be true
       end
+
+      it 'fills description, og:description and twitter:description from the first paragraph' do
+        head = File.read('blog/public/post1.html')
+        summary = 'Parrot turns a folder of Markdown into a static blog.'
+        expect(head).to include(%(<meta name="description" content="#{summary}))
+        expect(head).to include(%(<meta property="og:description" content="#{summary}))
+        expect(head).to include(%(<meta name="twitter:description" content="#{summary}))
+      end
+
+      it 'maps lang onto og:locale' do
+        expect(File.read('blog/public/post1.html')).to include('<meta property="og:locale" content="en_US">')
+      end
+
+      it 'renders exactly one <h1> per page' do
+        %w[index post1 post2].each do |name|
+          expect(File.read("blog/public/#{name}.html").scan('<h1').size).to eq(1)
+        end
+      end
+
+      it 'embeds BlogPosting JSON-LD on posts' do
+        data = JSON.parse(File.read('blog/public/post1.html')[%r{<script type="application/ld\+json">(.+?)</script>}m, 1])
+        expect(data['@type']).to eq('BlogPosting')
+        expect(data['headline']).to eq('About Parrot')
+        expect(data['datePublished']).to eq('2026-09-08')
+        expect(data['author']['name']).to eq('Your name')
+      end
+
+      it 'embeds WebSite JSON-LD on the index' do
+        data = JSON.parse(File.read('blog/public/index.html')[%r{<script type="application/ld\+json">(.+?)</script>}m, 1])
+        expect(data['@type']).to eq('WebSite')
+        expect(data['url']).to eq('https://example.com/')
+      end
+
+      it 'writes an RSS feed and links it for autodiscovery' do
+        feed = File.read('blog/public/feed.xml')
+        expect(feed).to include('<rss version="2.0"')
+        expect(feed).to include('<link>https://example.com/post1.html</link>')
+        expect(feed).to include('<pubDate>Tue, 08 Sep 2026 00:00:00 -0000</pubDate>')
+        expect(File.read('blog/public/post1.html'))
+          .to include('<link rel="alternate" type="application/rss+xml" title="Parrot" href="https://example.com/feed.xml">')
+      end
+
+      it 'emits og:image:width/height read from the image file' do
+        head = File.read('blog/public/post1.html')
+        expect(head).to include('<meta property="og:image:width" content="1024">')
+        expect(head).to include('<meta property="og:image:height" content="1024">')
+      end
+
+      it 'gives the sitemap index entry the newest post date as <lastmod>' do
+        sitemap = File.read('blog/public/sitemap.xml')
+        expect(sitemap).to match(%r{<loc>https://example\.com/</loc>\s*<lastmod>2026-09-08</lastmod>})
+      end
+
+      it 'builds a noindex 404 page with a parrot image, outside the sitemap and feed' do
+        page = File.read('blog/public/404.html')
+        expect(page).to include('<title>Page not found</title>')
+        expect(page).to include('<meta name="robots" content="noindex">')
+        expect(page).to include('images/parrot.jpeg')
+        expect(page.scan('<h1').size).to eq(1)
+        expect(File.exist?('blog/public/images/parrot.jpeg')).to be true
+
+        expect(File.read('blog/public/sitemap.xml')).not_to include('404.html')
+        expect(File.read('blog/public/feed.xml')).not_to include('404.html')
+      end
     end
 
     context 'per-post language' do
@@ -112,6 +176,20 @@ describe Parrot::Commands do
         expect(File.read('blog/public/story.html')).to include('<html lang="ml">')
         expect(File.read('blog/public/post1.html')).to include('<html lang="en">')
         expect(File.read('blog/public/index.html')).to include('<html lang="en">')
+      end
+    end
+
+    context 'post header description' do
+      let(:build_config) { Parrot::Config.new(File.join(Dir.pwd, 'blog'), Logger.new(File::NULL)) }
+
+      it 'wins over the first-paragraph fallback' do
+        File.write('blog/views/posts/story.md',
+                   "<!--\ntitle: A story\ndescription: Hand-written summary.\n-->\n\n# A story\n\nThe opening paragraph.\n")
+        Parrot::Commands::BuildCommand.new([], build_config).run
+
+        head = File.read('blog/public/story.html')
+        expect(head).to include('<meta name="description" content="Hand-written summary.">')
+        expect(head).to include('<meta property="og:description" content="Hand-written summary.">')
       end
     end
   end
