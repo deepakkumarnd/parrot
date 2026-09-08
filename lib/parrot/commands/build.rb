@@ -103,12 +103,14 @@ module Parrot
       end
 
       def copy_image_assets(html)
-        html.css("img, link").each do |img|
-          next if img["src"].nil?
+        html.css("img, link").each do |node|
+          # <img> carries the path in src, <link> (icons, favicons) in href.
+          src = node["src"] || node["href"]
+          next if src.nil?
 
-          source_path = File.join(app_root, img["src"])
+          source_path = File.join(app_root, src)
 
-          if img["src"].start_with?("images/") && File.exist?(source_path)
+          if src.start_with?("images/") && File.exist?(source_path)
             copy_image(source_path)
           end
         end
@@ -257,7 +259,7 @@ module Parrot
         end
       end
 
-      # Sets the per-page <title>, <meta property="og:title/og:url/og:type"> and
+      # Sets the per-page <html lang>, <title>, <meta property="og:*"> and
       # <link rel="canonical"> on the built HTML, and turns a relative og:image
       # path into an absolute URL (copying the file into the build). The site's
       # base URL comes from the layout (its canonical/og:url tag); the generated
@@ -270,6 +272,12 @@ module Parrot
         if title && !title.empty?
           title_tag = html.at("head title")
           title_tag.content = title if title_tag
+        end
+
+        lang = meta["lang"]
+        if lang && !lang.empty?
+          root = html.at("html")
+          root["lang"] = lang if root
         end
 
         base = canonical_base(html)

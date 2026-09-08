@@ -1,6 +1,7 @@
 <!--
 title: Your second post
 date: 08/09/2026
+lang: en
 -->
 
 # Your second post

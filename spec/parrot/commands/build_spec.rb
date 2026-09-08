@@ -84,6 +84,35 @@ describe Parrot::Commands do
         expect(robots).to include('User-agent: *')
         expect(robots).to include('Sitemap: https://example.com/sitemap.xml')
       end
+
+      it 'sets <html lang> from the post header' do
+        expect(File.read('blog/public/post1.html')).to include('<html lang="en">')
+      end
+
+      it 'loads app.js with defer and warms up the CDNs' do
+        head = File.read('blog/public/post1.html')
+        expect(head).to include('<script src="app.js" defer>')
+        expect(head).to include('<link rel="preconnect" href="https://cdn.simplecss.org"')
+        expect(head).to include('<link rel="preconnect" href="https://cdn.jsdelivr.net"')
+      end
+
+      it 'ships both favicon formats referenced from the layout' do
+        expect(File.exist?('blog/public/images/favicon.ico')).to be true
+        expect(File.exist?('blog/public/images/favicon.svg')).to be true
+      end
+    end
+
+    context 'per-post language' do
+      let(:build_config) { Parrot::Config.new(File.join(Dir.pwd, 'blog'), Logger.new(File::NULL)) }
+
+      it 'uses the post header lang for that page only' do
+        File.write('blog/views/posts/story.md', "<!--\ntitle: കഥ\nlang: ml\n-->\n\n# കഥ\n")
+        Parrot::Commands::BuildCommand.new([], build_config).run
+
+        expect(File.read('blog/public/story.html')).to include('<html lang="ml">')
+        expect(File.read('blog/public/post1.html')).to include('<html lang="en">')
+        expect(File.read('blog/public/index.html')).to include('<html lang="en">')
+      end
     end
   end
 end

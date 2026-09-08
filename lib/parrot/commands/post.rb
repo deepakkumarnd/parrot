@@ -70,6 +70,7 @@ module Parrot
           <!--
           title: #{title}
           date: #{header_date}
+          lang: en
           -->
 
           # #{title}

@@ -4,10 +4,20 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
-  <link rel="icon" type="image/x-icon" href="images/favicon.ico">
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#212121">
+  <!-- Warm up the connections to the CDNs the page pulls from. Add
+       https://www.googletagmanager.com here too if you wire up GTM/Analytics. -->
+  <link rel="preconnect" href="https://cdn.simplecss.org" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+  <link rel="icon" type="image/x-icon" href="images/favicon.ico" sizes="32x32">
+  <link rel="icon" type="image/svg+xml" href="images/favicon.svg">
+  <!-- Drop a 180×180 PNG at images/apple-touch-icon.png for iOS home screens. -->
+  <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
   <link rel="stylesheet" href="https://cdn.simplecss.org/simple.min.css">
   <link rel="stylesheet" href="app.css">
-  <script src="app.js"></script>
+  <script src="app.js" defer></script>
   <!-- Set this to your site's URL. Parrot appends each page's path when building. -->
   <meta property="og:url" content="https://example.com">
   <link rel="canonical" href="https://example.com">

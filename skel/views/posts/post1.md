@@ -1,6 +1,7 @@
 <!--
 title: About Parrot
 date: 08/09/2026
+lang: en
 -->
 
 # About Parrot
