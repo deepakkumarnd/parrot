@@ -207,10 +207,11 @@ module Parrot
         end
       end
 
-      # Sets the per-page <title>, <meta property="og:url"> and
-      # <link rel="canonical"> on the built HTML. The site's base URL comes from
-      # the layout (its canonical/og:url tag); the generated file's path is
-      # appended so each page points at itself.
+      # Sets the per-page <title>, <meta property="og:title/og:url"> and
+      # <link rel="canonical"> on the built HTML, and turns a relative og:image
+      # path into an absolute URL (copying the file into the build). The site's
+      # base URL comes from the layout (its canonical/og:url tag); the generated
+      # file's path is appended so each page points at itself.
       def apply_page_meta(html, output_name, title = nil)
         if title && !title.empty?
           title_tag = html.at("head title")
@@ -227,6 +228,25 @@ module Parrot
 
         canonical = html.at('head link[rel="canonical"]')
         canonical["href"] = page_url if canonical
+
+        page_title = html.at("head title")&.text
+        og_title = html.at('head meta[property="og:title"]')
+        og_title["content"] = page_title if og_title && page_title && !page_title.empty?
+
+        resolve_og_image(html, base)
+      end
+
+      # Open Graph and Twitter require an absolute og:image URL. Rewrite a
+      # relative images/… path against the site's base URL and copy the file
+      # into the build; leave an already-absolute URL untouched.
+      def resolve_og_image(html, base)
+        og_image = html.at('head meta[property="og:image"]')
+        src = og_image && og_image["content"]
+        return if src.nil? || src.empty? || src.start_with?("http://", "https://", "//")
+
+        source_path = File.join(app_root, src)
+        copy_image(source_path) if src.start_with?("images/") && File.exist?(source_path)
+        og_image["content"] = "#{base}/#{src}"
       end
 
       # The site's base URL as declared in the layout, without a trailing slash.

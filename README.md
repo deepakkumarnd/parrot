@@ -120,11 +120,16 @@ date: 08/09/2026
 -->
 ```
 
-`title` becomes the page's `<title>` tag at build time. Set your site's URL once
-in `views/layout.html.erb` — the `<meta property="og:url">` and
+`title` becomes the page's `<title>` and `og:title` at build time. Set your
+site's URL once in `views/layout.html.erb` — the `<meta property="og:url">` and
 `<link rel="canonical">` tags — and Parrot rewrites both per page, appending the
 built file's path (`https://example.com/post1.html`, `https://example.com/` for
 the index).
+
+The layout also ships link-preview tags — `og:type`, `og:site_name`, `og:image`
+and `twitter:card`. A relative `og:image` path (`images/parrot.jpeg`) is copied
+into the build and rewritten to an absolute URL; swap it for your own image or a
+full URL.
 
 ## How `serve` rebuilds
 

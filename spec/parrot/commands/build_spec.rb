@@ -42,6 +42,21 @@ describe Parrot::Commands do
         expect(index).to include('<meta property="og:url" content="https://example.com/">')
         expect(index).to include('<link rel="canonical" href="https://example.com/">')
       end
+
+      it 'sets og:title per page from the same source as <title>' do
+        expect(File.read('blog/public/post1.html')).to include('<meta property="og:title" content="About Parrot">')
+        expect(File.read('blog/public/index.html')).to include('<meta property="og:title" content="Parrot">')
+      end
+
+      it 'rewrites a relative og:image to an absolute URL and ships the file' do
+        expect(File.read('blog/public/post1.html'))
+          .to include('<meta property="og:image" content="https://example.com/images/parrot.jpeg">')
+        expect(File.exist?('blog/public/images/parrot.jpeg')).to be true
+      end
+
+      it 'keeps the Twitter Card tag from the layout' do
+        expect(File.read('blog/public/post1.html')).to include('<meta name="twitter:card" content="summary_large_image">')
+      end
     end
   end
 end
