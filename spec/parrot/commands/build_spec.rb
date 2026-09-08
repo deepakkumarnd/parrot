@@ -96,9 +96,10 @@ describe Parrot::Commands do
         expect(head).to include('<link rel="preconnect" href="https://cdn.jsdelivr.net"')
       end
 
-      it 'ships both favicon formats referenced from the layout' do
+      it 'ships every icon referenced from the layout' do
         expect(File.exist?('blog/public/images/favicon.ico')).to be true
         expect(File.exist?('blog/public/images/favicon.svg')).to be true
+        expect(File.exist?('blog/public/images/apple-touch-icon.png')).to be true
       end
 
       it 'fills description, og:description and twitter:description from the first paragraph' do

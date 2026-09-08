@@ -62,6 +62,7 @@ blog/
 ├── views/
 │   ├── layout.html.erb   # page wrapper; <%= yield %> is the rendered Markdown
 │   ├── index.md          # home page (typically a post listing)
+│   ├── 404.md            # built to public/404.html
 │   └── posts/
 │       └── *.md          # one Markdown file per post
 ├── css/
@@ -110,37 +111,42 @@ examples of everything below.
 
 ## Post header
 
-Each post starts with an HTML comment holding its metadata (`parrot post` writes
-this for you):
+Each post starts with an HTML comment holding its metadata. `parrot post` writes
+`title`, `date` and `lang`; `description` is one you can add by hand:
 
 ```
 <!--
 title: My new post title
 date: 08/09/2026
 lang: en
+description: One or two sentences for search results and social cards.
 -->
 ```
 
 `title` becomes the page's `<title>` and `og:title` at build time. `lang` sets
 `<html lang="…">` for that page — leave it `en`, or set it per post (`ml`, `hi`,
-…) when a post is in another language. Set your site's URL once in
-`views/layout.html.erb` — the `<meta property="og:url">` and
-`<link rel="canonical">` tags — and Parrot rewrites both per page, appending the
-built file's path (`https://example.com/post1.html`, `https://example.com/` for
-the index).
+…) when a post is in another language, which also feeds `og:locale`.
+`description` is optional: it fills `<meta name="description">`, `og:description`
+and `twitter:description`, and Parrot falls back to the post's first paragraph
+when it's absent. Set your site's URL once in `views/layout.html.erb` — the
+`<meta property="og:url">` and `<link rel="canonical">` tags — and Parrot
+rewrites both per page, appending the built file's path
+(`https://example.com/post1.html`, `https://example.com/` for the index).
 
 The layout also ships link-preview tags — `og:type`, `og:site_name`, `og:image`
 and `twitter:card`. A relative `og:image` path (`images/parrot.jpeg`) is copied
 into the build and rewritten to an absolute URL; swap it for your own image or a
-full URL. The index stays `og:type=website`; each post is built as
-`og:type=article` with an `article:published_time` derived from its header
-`date`.
+full URL. When it's a local PNG/JPEG/GIF, Parrot reads its size and adds
+`og:image:width`/`height`. The index stays `og:type=website`; each post is built
+as `og:type=article` with an `article:published_time` derived from its header
+`date`. Every page also gets a schema.org JSON-LD block — `BlogPosting` for
+posts, `WebSite` for the index.
 
 Other layout defaults worth knowing: `app.js` loads with `defer`, the CDNs are
-`preconnect`ed, `theme-color` is set for light and dark, and icons are wired up
-for `images/favicon.ico`, `images/favicon.svg` and (if you add it)
-`images/apple-touch-icon.png` — any `images/…` file referenced from an `<img>` or
-`<link>` is copied into the build.
+`preconnect`ed, `theme-color` is set for light and dark, and a parrot icon ships
+in three forms — `images/favicon.ico`, `images/favicon.svg` and
+`images/apple-touch-icon.png` (swap in your own). Any `images/…` file referenced
+from an `<img>` or `<link>` is copied into the build.
 
 ## How `serve` rebuilds
 
@@ -149,9 +155,10 @@ for `images/favicon.ico`, `images/favicon.svg` and (if you add it)
   then writes the new checksum. Otherwise it skips straight to serving the
   existing `public/`.
 - While running, each saved file rebuilds only what it affects: a single post, a
-  new/removed post, the compiled CSS, `app.js`, or a copied image. Editing
-  `views/layout.html.erb` rebuilds the index and every post. Adding or removing a
-  post, or editing the layout, also regenerates `sitemap.xml`.
+  new/removed post, `views/404.md`, the compiled CSS, `app.js`, or a copied
+  image. Editing `views/layout.html.erb` rebuilds the index and every post.
+  Adding or removing a post, or editing the layout, also regenerates
+  `sitemap.xml` and `feed.xml`.
 - `public/.checksum` is regenerated build state. It is gitignored and must not
   be deployed.
 
@@ -160,11 +167,16 @@ for `images/favicon.ico`, `images/favicon.svg` and (if you add it)
 Run `parrot build` and upload the contents of `public/` to any static host —
 GitHub Pages, Netlify, S3, nginx, and so on. Exclude `public/.checksum`.
 
-The build also writes `public/sitemap.xml` (the index plus every post, with a
-`<lastmod>` from each post's `date`) and `public/robots.txt` pointing crawlers at
-it. Both use the base URL from `views/layout.html.erb`, so set that before
-deploying; if the layout has no `og:url`/canonical, the sitemap is skipped and
-`robots.txt` omits the `Sitemap:` line.
+The build also writes `public/sitemap.xml` (every post with a `<lastmod>` from
+its `date`, and the index dated to the newest post), `public/robots.txt`
+pointing crawlers at it, and `public/feed.xml` (an RSS 2.0 feed, newest post
+first, linked from every page for autodiscovery). These use the base URL from
+`views/layout.html.erb`, so set that before deploying; if the layout has no
+`og:url`/canonical, the sitemap and feed are skipped and `robots.txt` omits the
+`Sitemap:` line.
+
+`views/404.md` is built to `public/404.html` (marked `noindex`, kept out of the
+sitemap and feed) for hosts that serve it on a missing path.
 
 ## Development
 
