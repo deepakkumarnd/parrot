@@ -1,3 +1,4 @@
+require 'date'
 require 'tilt'
 require 'nokogiri'
 require 'sassc'
@@ -72,7 +73,7 @@ module Parrot
         html = inject_scripts(html)
 
         output_name = File.basename(post_path).sub('.md', '.html')
-        apply_page_meta(html, output_name, post_metadata(post_path)["title"])
+        apply_page_meta(html, output_name, post_metadata(post_path))
 
         output = File.join(build_path, output_name)
         File.write(output, html)
@@ -152,8 +153,52 @@ module Parrot
         FileUtils.mkdir('public')
         build_index_page
         build_posts
+        build_sitemap
+        build_robots
         compile_css
         compile_js
+      end
+
+      # Writes public/sitemap.xml listing the index and every post, each URL
+      # built from the layout's base URL. Posts carry a <lastmod> from their
+      # header `date`. Skipped when the layout declares no base URL.
+      def build_sitemap
+        base = site_base_url
+        unless base
+          config.logger.info "No og:url/canonical in the layout, skipping sitemap.xml"
+          return
+        end
+
+        entries = [{ loc: "#{base}/" }]
+        Dir["#{app_root}/views/posts/*.md"].sort.each do |post_path|
+          name = File.basename(post_path).sub(".md", ".html")
+          entries << { loc: "#{base}/#{name}", lastmod: iso_date(post_metadata(post_path)["date"]) }
+        end
+
+        xml = +%(<?xml version="1.0" encoding="UTF-8"?>\n)
+        xml << %(<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n)
+        entries.each do |entry|
+          xml << "  <url>\n    <loc>#{xml_escape(entry[:loc])}</loc>\n"
+          xml << "    <lastmod>#{entry[:lastmod]}</lastmod>\n" if entry[:lastmod]
+          xml << "  </url>\n"
+        end
+        xml << "</urlset>\n"
+
+        output = File.join(build_path, "sitemap.xml")
+        File.write(output, xml)
+        config.logger.info "Built #{output}"
+      end
+
+      # Writes public/robots.txt allowing everything and pointing crawlers at
+      # the sitemap (when the layout gives us a base URL to build its address).
+      def build_robots
+        base = site_base_url
+        lines = ["User-agent: *", "Allow: /"]
+        lines << "Sitemap: #{base}/sitemap.xml" if base
+
+        output = File.join(build_path, "robots.txt")
+        File.write(output, lines.join("\n") + "\n")
+        config.logger.info "Built #{output}"
       end
 
       # Rebuild a single file. Used by the file watcher, so `file` may be an
@@ -170,13 +215,18 @@ module Parrot
 
         case relative
         when "views/layout.html.erb"
-          # The layout wraps every page, so everything is rebuilt.
+          # The layout wraps every page, so everything is rebuilt. Its base URL
+          # feeds the sitemap and robots.txt too.
           build_index_page
           build_posts
+          build_sitemap
+          build_robots
         when "views/index.md"
           build_index_page
         when %r{\Aviews/posts/[^/]+\.md\z}
           File.exist?(path) ? build_post(path) : remove_built_post(path)
+          # A post was added, removed or had its date changed.
+          build_sitemap
         when %r{\Acss/.+\.(scss|css)\z}
           # css is concatenated before compiling, so a single change recompiles all.
           compile_css
@@ -207,12 +257,16 @@ module Parrot
         end
       end
 
-      # Sets the per-page <title>, <meta property="og:title/og:url"> and
+      # Sets the per-page <title>, <meta property="og:title/og:url/og:type"> and
       # <link rel="canonical"> on the built HTML, and turns a relative og:image
       # path into an absolute URL (copying the file into the build). The site's
       # base URL comes from the layout (its canonical/og:url tag); the generated
-      # file's path is appended so each page points at itself.
-      def apply_page_meta(html, output_name, title = nil)
+      # file's path is appended so each page points at itself. `meta` is the
+      # post's header Hash (empty for the index).
+      def apply_page_meta(html, output_name, meta = {})
+        title = meta["title"]
+        is_post = output_name != "index.html"
+
         if title && !title.empty?
           title_tag = html.at("head title")
           title_tag.content = title if title_tag
@@ -221,7 +275,7 @@ module Parrot
         base = canonical_base(html)
         return unless base
 
-        page_url = output_name == "index.html" ? "#{base}/" : "#{base}/#{output_name}"
+        page_url = is_post ? "#{base}/#{output_name}" : "#{base}/"
 
         og = html.at('head meta[property="og:url"]')
         og["content"] = page_url if og
@@ -233,7 +287,34 @@ module Parrot
         og_title = html.at('head meta[property="og:title"]')
         og_title["content"] = page_title if og_title && page_title && !page_title.empty?
 
+        apply_article_meta(html, meta) if is_post
+
         resolve_og_image(html, base)
+      end
+
+      # A post is an OG "article", not a "website"; add its publish date (from
+      # the header's dd/mm/yyyy `date`) as article:published_time in ISO form.
+      def apply_article_meta(html, meta)
+        og_type = html.at('head meta[property="og:type"]')
+        og_type["content"] = "article" if og_type
+
+        published = iso_date(meta["date"])
+        return unless published
+
+        node = Nokogiri::XML::Node.new("meta", html)
+        node["property"] = "article:published_time"
+        node["content"] = published
+        (html.at("head") || html).add_child(node)
+      end
+
+      # "31/12/2026" -> "2026-12-31"; nil for a blank or invalid value.
+      def iso_date(value)
+        day, month, year = value.to_s.strip.split("/")
+        return unless day && month && year
+
+        Date.new(year.to_i, month.to_i, day.to_i).iso8601
+      rescue ArgumentError
+        nil
       end
 
       # Open Graph and Twitter require an absolute og:image URL. Rewrite a
@@ -254,6 +335,17 @@ module Parrot
         node = html.at('head link[rel="canonical"]') || html.at('head meta[property="og:url"]')
         value = node && (node["href"] || node["content"])
         value && value.strip.chomp("/")
+      end
+
+      # Same base URL, read straight from the rendered layout — for build steps
+      # (sitemap, robots) that aren't tied to one page.
+      def site_base_url
+        layout = Tilt.new("#{app_root}/views/layout.html.erb")
+        canonical_base(Nokogiri::HTML(layout.render { "" }))
+      end
+
+      def xml_escape(text)
+        text.gsub("&", "&amp;").gsub("<", "&lt;").gsub(">", "&gt;")
       end
 
       def remove_built_post(post_path)
