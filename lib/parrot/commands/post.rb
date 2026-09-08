@@ -38,7 +38,7 @@ module Parrot
 
         date = Date.today.to_s
 
-        File.write(post_path, post_template(date))
+        File.write(post_path, post_template(date, Date.today.strftime("%d/%m/%Y")))
         config.logger.info "Created #{post_path}"
 
         prepend_to_index(index_path, date)
@@ -65,8 +65,13 @@ module Parrot
         raise ArgumentError, USAGE
       end
 
-      def post_template(date)
+      def post_template(date, header_date)
         <<~MARKDOWN
+          <!--
+          title: #{title}
+          date: #{header_date}
+          -->
+
           # #{title}
 
           _#{date}_

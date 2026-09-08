@@ -39,6 +39,7 @@ describe Parrot::Commands do
       expect(File.exist?(post_path)).to be true
 
       body = File.read(post_path)
+      expect(body).to include("<!--\ntitle: My First Post!\ndate: #{Date.today.strftime('%d/%m/%Y')}\n-->")
       expect(body).to include('# My First Post!')
       expect(body).to include(Date.today.to_s)
 

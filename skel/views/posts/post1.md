@@ -1,3 +1,8 @@
+<!--
+title: About Parrot
+date: 08/09/2026
+-->
+
 # About Parrot
 
 Parrot turns a folder of Markdown into a static blog. This post is also a

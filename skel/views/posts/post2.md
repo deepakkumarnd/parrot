@@ -1,3 +1,8 @@
+<!--
+title: Your second post
+date: 08/09/2026
+-->
+
 # Your second post
 
 This is `views/posts/post2.md`. Edit it, or delete it and drop your own

@@ -49,6 +49,7 @@ module Parrot
 
         html = update_internal_links(text)
         copy_image_assets(html)
+        apply_page_meta(html, "index.html")
 
         output = File.join(build_path, "index.html")
         File.write(output, html)
@@ -70,7 +71,10 @@ module Parrot
         copy_image_assets(html)
         html = inject_scripts(html)
 
-        output = File.join(build_path, File.basename(post_path).sub('.md', '.html'))
+        output_name = File.basename(post_path).sub('.md', '.html')
+        apply_page_meta(html, output_name, post_metadata(post_path)["title"])
+
+        output = File.join(build_path, output_name)
         File.write(output, html)
         config.logger.info "Built #{output}"
       end
@@ -186,6 +190,51 @@ module Parrot
       end
 
       private
+
+      # Reads the `<!-- key: value -->` comment header at the top of a post's
+      # Markdown file into a Hash. Returns {} when the file has no such header.
+      def post_metadata(post_path)
+        header = File.read(post_path)[/\A\s*<!--(.+?)-->/m, 1]
+        return {} unless header
+
+        header.each_line.each_with_object({}) do |line, meta|
+          key, sep, value = line.partition(":")
+          next if sep.empty?
+
+          key = key.strip
+          value = value.strip
+          meta[key] = value unless key.empty? || value.empty?
+        end
+      end
+
+      # Sets the per-page <title>, <meta property="og:url"> and
+      # <link rel="canonical"> on the built HTML. The site's base URL comes from
+      # the layout (its canonical/og:url tag); the generated file's path is
+      # appended so each page points at itself.
+      def apply_page_meta(html, output_name, title = nil)
+        if title && !title.empty?
+          title_tag = html.at("head title")
+          title_tag.content = title if title_tag
+        end
+
+        base = canonical_base(html)
+        return unless base
+
+        page_url = output_name == "index.html" ? "#{base}/" : "#{base}/#{output_name}"
+
+        og = html.at('head meta[property="og:url"]')
+        og["content"] = page_url if og
+
+        canonical = html.at('head link[rel="canonical"]')
+        canonical["href"] = page_url if canonical
+      end
+
+      # The site's base URL as declared in the layout, without a trailing slash.
+      def canonical_base(html)
+        node = html.at('head link[rel="canonical"]') || html.at('head meta[property="og:url"]')
+        value = node && (node["href"] || node["content"])
+        value && value.strip.chomp("/")
+      end
 
       def remove_built_post(post_path)
         output = File.join(build_path, File.basename(post_path).sub('.md', '.html'))
