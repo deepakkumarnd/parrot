@@ -2,6 +2,7 @@ require 'fileutils'
 require_relative 'commands/new'
 require_relative 'commands/build'
 require_relative 'commands/serve'
+require_relative 'commands/post'
 
 module Parrot
 

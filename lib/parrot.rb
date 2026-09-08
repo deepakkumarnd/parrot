@@ -9,7 +9,7 @@ module Parrot
 
   Config = Struct.new(:root_dir, :logger)
   class Parrot
-    SUB_COMMANDS = %w( new build serve )
+    SUB_COMMANDS = %w( new build serve post )
 
     attr_accessor :root_dir, :logger, :config
     def initialize(args = [])
@@ -25,6 +25,11 @@ module Parrot
     def run
       exit_if_invalid(@command)
       Runner.new(@command, @args, self.config).run_command
+    rescue ArgumentError => e
+      # A command was called with missing or malformed arguments; show how to
+      # call it instead of dumping a backtrace.
+      warn(e.message)
+      exit(1)
     end
 
     def self.usage
@@ -64,13 +69,19 @@ module Parrot
             $ cd blog
             $ parrot serve
 
+            Add a new post
+
+            $ parrot post --title \"My first post\"
+
             Build the blog
 
             $ parrot build
             """)
           exit(0)
         end
-      end.parse!(args)
+      end.order!(args)
+      # Stop at the first non-option (the sub-command) so flags that belong to
+      # the sub-command, e.g. `parrot post --title "..."`, are left untouched.
     end
   end
 end

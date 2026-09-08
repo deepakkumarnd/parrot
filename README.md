@@ -27,9 +27,10 @@ Run it as `bundle exec parrot`, or `gem install` the built gem to get a bare
 ## Quick start
 
 ```
-$ parrot new blog     # scaffold a blog from the skeleton
+$ parrot new blog                     # scaffold a blog from the skeleton
 $ cd blog
-$ parrot serve        # build, then serve on http://localhost:8000 and rebuild on change
+$ parrot post --title "Hello world"   # add a post and link it from the index page
+$ parrot serve                        # build, then serve on http://localhost:8000 and rebuild on change
 ```
 
 For a one-off build without the server:
@@ -42,14 +43,15 @@ $ parrot build        # writes the site into ./public
 
 | Command            | What it does                                                    |
 | ------------------ | -------------------------------------------------------------- |
-| `parrot new <dir>` | Copy the skeleton blog into `<dir>` (must not already exist)   |
-| `parrot build`     | Build the current blog into `public/`                          |
-| `parrot serve`     | Build, serve `public/` on port 8000, and watch for changes     |
+| `parrot new <dir>`      | Copy the skeleton blog into `<dir>` (must not already exist)              |
+| `parrot post --title "<title>"` | Scaffold `views/posts/<slug>.md` and link it from `index.md` with today's date |
+| `parrot build`          | Build the current blog into `public/`                                    |
+| `parrot serve`          | Build, serve `public/` on port 8000, and watch for changes               |
 
 Global flags: `-q` / `--quiet`, `-v` / `--version`, `-h` / `--help`.
 
-`build` and `serve` operate on the current working directory, so run them from
-the blog's root.
+`post`, `build` and `serve` operate on the current working directory, so run
+them from the blog's root.
 
 ## Project layout
 
