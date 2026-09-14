@@ -29,7 +29,7 @@ Run it as `bundle exec parrot`, or `gem install` the built gem to get a bare
 ```
 $ parrot new blog                     # scaffold a blog from the skeleton
 $ cd blog
-$ parrot post --title "Hello world"   # add a post and link it from the index page
+$ parrot post --title "Hello world"   # add a post — it appears in the generated index automatically
 $ parrot serve                        # build, then serve on http://localhost:8000 and rebuild on change
 ```
 
@@ -44,7 +44,7 @@ $ parrot build        # writes the site into ./public
 | Command            | What it does                                                    |
 | ------------------ | -------------------------------------------------------------- |
 | `parrot new <dir>`      | Copy the skeleton blog into `<dir>` (must not already exist)              |
-| `parrot post --title "<title>"` | Scaffold `views/posts/<slug>.md` and link it from `index.md` with today's date |
+| `parrot post --title "<title>"` | Scaffold `views/posts/<slug>.md` with today's date                |
 | `parrot build`          | Build the current blog into `public/`                                    |
 | `parrot serve`          | Build, serve `public/` on port 8000, and watch for changes               |
 
@@ -59,9 +59,9 @@ A generated blog looks like this:
 
 ```
 blog/
+├── config.yaml            # post listing settings — see "The index page" below
 ├── views/
 │   ├── layout.html.erb   # page wrapper; <%= yield %> is the rendered Markdown
-│   ├── index.md          # home page (typically a post listing)
 │   ├── 404.md            # built to public/404.html
 │   └── posts/
 │       └── *.md          # one Markdown file per post
@@ -72,6 +72,9 @@ blog/
 ├── images/               # images referenced from pages are copied to public/images/
 └── public/               # build output — serve/deploy this, don't edit it
 ```
+
+There's no `views/index.md` — the home page is generated at build time from
+everything in `views/posts/*.md`.
 
 ## Writing posts
 
@@ -108,6 +111,14 @@ examples of everything below.
   ```
 - **Internal links** — `[text](#post2.md)` is rewritten to `post2.html` during
   the build, so link posts to each other by their Markdown filename.
+- **`{post_date}`** — a literal `{post_date}` placeholder anywhere in a post's
+  body is replaced at build time with its header `date`, formatted per
+  `post_date_format.on_post` in `config.yaml` (see "The index page" below).
+  `parrot post` writes new posts with one under the title.
+
+Every built post also gets a "← Back to all posts" link (`<p class="back-link">`)
+at the top of its `<main>`, pointing at `index.html`; style it with the
+`.back-link` class in your CSS. The index page doesn't get one.
 
 ## Post header
 
@@ -148,17 +159,63 @@ in three forms — `images/favicon.ico`, `images/favicon.svg` and
 `images/apple-touch-icon.png` (swap in your own). Any `images/…` file referenced
 from an `<img>` or `<link>` is copied into the build.
 
+## The index page
+
+`public/index.html` is generated at build time from every file in
+`views/posts/*.md`, newest first — there's nothing to hand-edit. How it's
+rendered is controlled by `config.yaml` at the blog's root:
+
+```yaml
+post_listing:
+  list_title: "Post listing"                         # the index page's <h1>; "" omits it
+  group_by: none                                      # none | year | month
+  list_format: "{post_date} ~ [{post_title}]({post_link})"
+
+post_date_format:
+  on_list: "%m/%Y"     # {post_date} inside list_format above
+  on_post: "%d/%m/%Y"  # a literal {post_date} placeholder inside a post's own body
+```
+
+**`group_by`** wraps the listing in `## <year>` or `## <Month Year>` sections
+(newest first); `none` is a flat list.
+
+**`list_format`** is a Markdown template applied to each post:
+
+- `{post_<key>}` — that key from the post's header, as plain text:
+  `{post_title}`, `{post_lang}`, or any custom field you add to a post's
+  `<!-- key: value -->` header.
+- `{post_date}` — the header's `date`, formatted per `post_date_format.on_list`
+  rather than shown as-authored.
+- `{post_link}` — the post's href, the one field Parrot computes itself rather
+  than reading from the header. Wrap whichever part should be clickable in
+  Markdown link syntax yourself: `[{post_title}]({post_link})` links just the
+  title; `[{post_date} ~ {post_title}]({post_link})` links the whole line.
+- Anything else in `{…}` is a Ruby [`strftime`](https://ruby-doc.org/3.2.2/Date.html#method-i-strftime)
+  format string applied to the post's header `date` directly, e.g.
+  `{%A, %B %d %Y}` — shown as formatted, not run through `post_date_format`.
+
+`post_date_format.on_list` and `.on_post` are themselves `strftime` format
+strings, formatting `{post_date}` wherever it's used — in `list_format` above,
+and as a literal `{post_date}` placeholder inside a post's own Markdown body
+(see "Writing posts").
+
+`config.yaml` is optional; a missing file, section, or key falls back to the
+defaults shown above.
+
 ## How `serve` rebuilds
 
 - On startup Parrot hashes every source file. If the combined checksum differs
   from `public/.checksum` — or that file is missing — it runs a full build and
   then writes the new checksum. Otherwise it skips straight to serving the
   existing `public/`.
-- While running, each saved file rebuilds only what it affects: a single post, a
-  new/removed post, `views/404.md`, the compiled CSS, `app.js`, or a copied
-  image. Editing `views/layout.html.erb` rebuilds the index and every post.
-  Adding or removing a post, or editing the layout, also regenerates
-  `sitemap.xml` and `feed.xml`.
+- While running, each saved file rebuilds only what it affects: a single post,
+  a new/removed post, `views/404.md`, the compiled CSS, `app.js`, or a copied
+  image. Because the index is generated from `views/posts/*.md`, adding,
+  removing or editing a post also rebuilds the index (along with
+  `sitemap.xml` and `feed.xml`); editing `config.yaml` rebuilds the index and
+  every post, since it can affect both the listing and each post's
+  `{post_date}` placeholder. Editing `views/layout.html.erb` rebuilds
+  everything.
 - `public/.checksum` is regenerated build state. It is gitignored and must not
   be deployed.
 
