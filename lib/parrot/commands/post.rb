@@ -5,7 +5,9 @@ module Parrot
 
   module Commands
 
-    # Post command scaffolds a new Markdown post and links it from the index page.
+    # Post command scaffolds a new Markdown post. The index page's listing is
+    # generated at build time from every file in views/posts, so nothing here
+    # needs to link it in.
     # @usage parrot post --title "My first post"
     # Runs from the blog's root, like `build` and `serve`.
     class PostCommand
@@ -27,22 +29,16 @@ module Parrot
         raise ArgumentError, "Title has no letters or digits to build a filename from.\n#{USAGE}" if slug.empty?
 
         posts_dir = File.join(app_root, "views", "posts")
-        index_path = File.join(app_root, "views", "index.md")
 
-        unless Dir.exist?(posts_dir) && File.exist?(index_path)
-          raise "Run this from the blog's root (no views/posts or views/index.md found)"
+        unless Dir.exist?(posts_dir)
+          raise "Run this from the blog's root (no views/posts found)"
         end
 
         post_path = File.join(posts_dir, "#{slug}.md")
         raise "Post #{post_path} already exists" if File.exist?(post_path)
 
-        date = Date.today.to_s
-
-        File.write(post_path, post_template(date, Date.today.strftime("%d/%m/%Y")))
+        File.write(post_path, post_template(Date.today.strftime("%d/%m/%Y")))
         config.logger.info "Created #{post_path}"
-
-        prepend_to_index(index_path, date)
-        config.logger.info "Linked #{slug}.md from #{index_path}"
       end
 
       private
@@ -65,7 +61,9 @@ module Parrot
         raise ArgumentError, USAGE
       end
 
-      def post_template(date, header_date)
+      # {post_date} is filled in at build time, formatted per
+      # config.yaml's post_date_format.on_post.
+      def post_template(header_date)
         <<~MARKDOWN
           <!--
           title: #{title}
@@ -75,23 +73,10 @@ module Parrot
 
           # #{title}
 
-          _#{date}_
+          _{post_date}_
 
           Write your post here.
         MARKDOWN
-      end
-
-      # Insert the new post above the existing ones: before the first list item,
-      # or, if the index has none yet, after its last non-empty line.
-      def prepend_to_index(index_path, date)
-        entry = "- [#{title}](##{slug}.md) — #{date}"
-        lines = File.read(index_path).lines.map(&:chomp)
-
-        insert_at = lines.index { |line| line.lstrip.start_with?("- ") }
-        insert_at ||= (lines.rindex { |line| !line.strip.empty? } || -1) + 1
-
-        lines.insert(insert_at, entry)
-        File.write(index_path, lines.join("\n") + "\n")
       end
 
       def slugify(text)

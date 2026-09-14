@@ -1,0 +1,44 @@
+# Settings for the post listing Parrot generates on the index page from
+# everything in views/posts/*.md. There is no views/index.md to hand-edit —
+# the listing is always built from the posts themselves, newest first.
+post_listing:
+  # The index page's <h1>. Set to "" to omit the heading entirely.
+  list_title: "Post listing"
+
+  # How to group posts in the listing.
+  #   none  - a single flat list
+  #   year  - a "## <year>" heading per year
+  #   month - a "## <Month Year>" heading per month
+  group_by: none
+
+  # Markdown format string for each post's list entry.
+  #   {post_<key>} - that key from the post's header, as plain text:
+  #                  {post_title}, {post_lang}, or any custom field you add
+  #                  to a post's <!-- key: value --> header
+  #   {post_date}  - the header's `date`, formatted per post_date_format.on_list
+  #                  below rather than shown as-authored
+  #   {post_link}  - the post's href, the one field Parrot computes itself
+  #                  rather than reading from the header — wrap whichever
+  #                  part should be clickable in Markdown link syntax
+  #                  yourself: [...]({post_link})
+  #   {...}        - anything else is a Ruby strftime format string (see
+  #                  Ruby's Date#strftime) applied to the post's header
+  #                  `date`, shown as-is rather than through
+  #                  post_date_format.on_list, e.g. {%A, %B %d %Y}
+  #
+  # Link just the title (default):
+  #   list_format: "{post_date} ~ [{post_title}]({post_link})"
+  # Link the whole line instead:
+  #   list_format: "[{post_date} ~ {post_title}]({post_link})"
+  list_format: "{post_date} ~ [{post_title}]({post_link})"
+
+# How to format a post's header `date` wherever it's shown via the
+# {post_date} token — as opposed to a bare strftime pattern like {%d/%m/%Y},
+# which is already a fixed format. A Ruby strftime format string (see
+# Ruby's Date#strftime), same as list_format's bare {...} patterns.
+post_date_format:
+  # Used for {post_date} inside post_listing's list_format above.
+  on_list: "%m/%Y"
+  # Used for a literal {post_date} placeholder inside a post's own Markdown
+  # body — `parrot post` writes new posts with one under the title.
+  on_post: "%d/%m/%Y"

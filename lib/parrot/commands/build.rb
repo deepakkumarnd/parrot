@@ -1,6 +1,7 @@
 require 'date'
 require 'time'
 require 'json'
+require 'yaml'
 require 'tilt'
 require 'nokogiri'
 require 'sassc'
@@ -33,6 +34,30 @@ module Parrot
         end
       end
 
+      # `{post_<key>}` expands to that key from the post's header (so
+      # `{post_title}`, `{post_lang}`, or any custom header field), as plain
+      # text; `{post_date}` is the same header field but run through
+      # `post_date_format.on_list` below rather than shown as-authored.
+      # `{post_link}` is the one field Parrot computes itself rather than
+      # reading from the header: the post's href. Wrap whichever span should
+      # be clickable in ordinary Markdown link syntax, [...]({post_link}).
+      # This default links just the title:
+      #   "{post_date} ~ [{post_title}]({post_link})"
+      # To make the whole line a link instead:
+      #   "[{post_date} ~ {post_title}]({post_link})"
+      # A bare strftime format string like {%d/%m/%Y} also still works here,
+      # shown exactly as formatted rather than through post_date_format.
+      DEFAULT_LIST_FORMAT = "{post_date} ~ [{post_title}]({post_link})"
+      DEFAULT_GROUP_BY = "none"
+      DEFAULT_LIST_TITLE = "Post listing"
+
+      # `{post_date}` is the one header field with its own dedicated config,
+      # config.yaml's `post_date_format` — a Ruby strftime format string (see
+      # Date#strftime) per context: `on_list` when `{post_date}` appears in a
+      # post_listing `list_format`, `on_post` when it appears as a literal
+      # placeholder inside a post's own Markdown body.
+      DEFAULT_POST_DATE_FORMAT = { "on_list" => "%m/%Y", "on_post" => "%d/%m/%Y" }.freeze
+
       attr_accessor :app_root, :config, :build_path
 
       def initialize(args = [], config)
@@ -45,10 +70,7 @@ module Parrot
       def build_index_page
         layout = Tilt.new("#{app_root}/views/layout.html.erb")
 
-        text = layout.render do
-          index = Tilt.new("#{app_root}/views/index.md")
-          index.render
-        end
+        text = layout.render { markdown_string(index_markdown).render }
 
         html = update_internal_links(text)
         copy_image_assets(html)
@@ -89,15 +111,19 @@ module Parrot
       def build_post(post_path)
         layout = Tilt.new("#{app_root}/views/layout.html.erb")
 
-        body = markdown(post_path).render
+        meta = post_metadata(post_path)
+        meta["__date"] = parse_post_date(meta["date"])
+
+        source = substitute_post_date(File.read(post_path), meta)
+        body = markdown_string(source).render
         text = layout.render { body }
 
         html = update_internal_links(text)
         copy_image_assets(html)
         html = inject_scripts(html)
+        html = inject_back_link(html)
 
         output_name = File.basename(post_path).sub('.md', '.html')
-        meta = post_metadata(post_path)
         meta["description"] ||= summarize(body)
         apply_page_meta(html, output_name, meta)
 
@@ -125,6 +151,17 @@ module Parrot
         script_tag.content = "" # Needed to close the tag properly
         # Append the <script> tag to the <body>
         html.at('body') << script_tag
+        html
+      end
+
+      # Adds a link back to the index above a post's own content, so a
+      # visitor who lands directly on a post can get back to the listing.
+      def inject_back_link(html)
+        main = html.at("main")
+        return html unless main
+
+        back_link = Nokogiri::HTML.fragment(%(<p class="back-link"><a href="index.html">← Back to all posts</a></p>))
+        main.prepend_child(back_link)
         html
       end
 
@@ -308,13 +345,18 @@ module Parrot
           build_sitemap
           build_robots
           build_feed
-        when "views/index.md"
-          build_index_page
         when "views/404.md"
           build_404_page
+        when "config.yaml"
+          # post_listing settings change the index; post_date_format also
+          # affects the {post_date} placeholder inside every post's own body.
+          build_index_page
+          build_posts
         when %r{\Aviews/posts/[^/]+\.md\z}
           File.exist?(path) ? build_post(path) : remove_built_post(path)
-          # A post was added, removed or had its date/summary changed.
+          # A post was added, removed or had its date/title/summary changed,
+          # any of which can change the generated index listing.
+          build_index_page
           build_sitemap
           build_feed
         when %r{\Acss/.+\.(scss|css)\z}
@@ -487,24 +529,27 @@ module Parrot
         (html.at("head") || html).add_child(node)
       end
 
-      # "31/12/2026" -> "2026-12-31"; nil for a blank or invalid value.
-      def iso_date(value)
+      # "31/12/2026" -> Date.new(2026, 12, 31); nil for a blank or invalid value.
+      def parse_post_date(value)
         day, month, year = value.to_s.strip.split("/")
         return unless day && month && year
 
-        Date.new(year.to_i, month.to_i, day.to_i).iso8601
+        Date.new(year.to_i, month.to_i, day.to_i)
       rescue ArgumentError
         nil
       end
 
+      # "31/12/2026" -> "2026-12-31"; nil for a blank or invalid value.
+      def iso_date(value)
+        parse_post_date(value)&.iso8601
+      end
+
       # "31/12/2026" -> "Thu, 31 Dec 2026 00:00:00 -0000" for RSS <pubDate>.
       def rfc822_date(value)
-        day, month, year = value.to_s.strip.split("/")
-        return unless day && month && year
+        date = parse_post_date(value)
+        return unless date
 
-        Time.utc(year.to_i, month.to_i, day.to_i).rfc2822
-      rescue ArgumentError
-        nil
+        Time.utc(date.year, date.month, date.day).rfc2822
       end
 
       # Open Graph and Twitter require an absolute og:image URL. Rewrite a
@@ -626,6 +671,12 @@ module Parrot
       end
 
       def markdown(file)
+        markdown_string(File.read(file))
+      end
+
+      # Same rendering as #markdown, for content that isn't backed by a file
+      # (the generated post listing on the index page).
+      def markdown_string(content)
         # GFM so ```lang fences work; rouge tags every token in a fenced code
         # block with a class, which #syntax_highlight_css then colours.
         Tilt::KramdownTemplate.new(
@@ -635,9 +686,126 @@ module Parrot
           syntax_highlighter_opts: { formatter: CodeFormatter },
           math_engine: 'mathjax',
           math_engine_opts: { format: [:html] }
-        ) do
-          File.read(file)
+        ) { content }
+      end
+
+      # The index page's Markdown body: a heading (config.yaml's
+      # post_listing.list_title, omitted entirely when explicitly set to an
+      # empty string) followed by the post listing, generated from
+      # views/posts/*.md — there is no views/index.md.
+      def index_markdown
+        "#{list_title_heading}#{render_post_listing(sorted_posts_metadata)}\n"
+      end
+
+      def list_title_heading
+        settings = post_listing_settings
+        return "" if settings.key?("list_title") && settings["list_title"].to_s.strip.empty?
+
+        "# #{settings["list_title"] || DEFAULT_LIST_TITLE}\n\n"
+      end
+
+      # Every post's header metadata plus its parsed date and source filename,
+      # newest first. Undated posts (or posts with an unparsable date) sort last.
+      def sorted_posts_metadata
+        Dir["#{app_root}/views/posts/*.md"].map do |post_path|
+          meta = post_metadata(post_path)
+          meta.merge(
+            "__filename" => File.basename(post_path),
+            "__date" => parse_post_date(meta["date"])
+          )
+        end.sort_by { |meta| meta["__date"] || Date.new(0) }.reverse
+      end
+
+      # Renders the Markdown post listing per config.yaml's
+      # post_listing settings (list_format, and group_by: year/month/none).
+      def render_post_listing(posts_meta)
+        settings = post_listing_settings
+        format = settings["list_format"] || DEFAULT_LIST_FORMAT
+        group_by = settings["group_by"] || DEFAULT_GROUP_BY
+
+        case group_by
+        when "year"
+          grouped_listing(posts_meta, format) { |date| date.strftime("%Y") }
+        when "month"
+          grouped_listing(posts_meta, format) { |date| date.strftime("%B %Y") }
+        else
+          flat_listing(posts_meta, format)
         end
+      end
+
+      def flat_listing(posts_meta, format)
+        posts_meta.map { |meta| "- #{format_list_entry(format, meta)}" }.join("\n")
+      end
+
+      # Splits the (already newest-first) posts into labelled sections, in the
+      # order their label was first seen, so sections stay newest-first too.
+      def grouped_listing(posts_meta, format)
+        posts_meta
+          .group_by { |meta| meta["__date"] ? yield(meta["__date"]) : "Undated" }
+          .map { |label, entries| "## #{label}\n\n#{flat_listing(entries, format)}" }
+          .join("\n\n")
+      end
+
+      # Expands a list_format string like
+      # "{post_date} ~ [{post_title}]({post_link})" against one post's
+      # metadata. `{post_<key>}` is that key read straight from the post's
+      # `<!-- key: value -->` header, as plain text (so `{post_title}`,
+      # `{post_lang}`, or any custom header field); `{post_date}` is the same
+      # header field but formatted per post_date_format.on_list, and
+      # `{post_link}` is the one field Parrot computes itself — the post's
+      # href, rewritten to the built page by #update_internal_links. Wrap
+      # whichever one should be clickable in Markdown link syntax yourself.
+      # Any other `{...}` is a strftime format string (see Date#strftime)
+      # applied to the post's header `date`.
+      def format_list_entry(format, meta)
+        format.gsub(/\{([^}]*)\}/) do
+          token = $1
+          if token == "post_link"
+            "##{meta['__filename']}"
+          elsif token == "post_date"
+            meta["__date"]&.strftime(post_date_format("on_list")) || ""
+          elsif token.start_with?("post_")
+            meta[token.sub(/\Apost_/, "")].to_s
+          else
+            meta["__date"]&.strftime(token) || ""
+          end
+        end
+      end
+
+      # Expands a literal "{post_date}" placeholder inside a post's own
+      # Markdown body (as opposed to a post_listing list_format), formatted
+      # per post_date_format.on_post.
+      def substitute_post_date(content, meta)
+        return content unless meta["__date"]
+
+        content.gsub("{post_date}") { meta["__date"].strftime(post_date_format("on_post")) }
+      end
+
+      # The `on_list` or `on_post` pattern from config.yaml's
+      # `post_date_format` section, falling back to DEFAULT_POST_DATE_FORMAT.
+      def post_date_format(context)
+        post_date_format_settings[context] || DEFAULT_POST_DATE_FORMAT.fetch(context)
+      end
+
+      # The `post_listing` section of config.yaml, or {} when the
+      # file is missing or invalid.
+      def post_listing_settings
+        posts_config["post_listing"] || {}
+      end
+
+      # The `post_date_format` section of config.yaml, or {}.
+      def post_date_format_settings
+        posts_config["post_date_format"] || {}
+      end
+
+      def posts_config
+        path = File.join(app_root, "config.yaml")
+        return {} unless File.exist?(path)
+
+        YAML.safe_load(File.read(path)) || {}
+      rescue Psych::SyntaxError => e
+        config.logger.info "Invalid config.yaml, using defaults: #{e.message}"
+        {}
       end
     end
   end

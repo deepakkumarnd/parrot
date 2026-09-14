@@ -120,6 +120,13 @@ describe Parrot::Commands do
         end
       end
 
+      it 'links back to the index from the top of each post, but not from the index itself' do
+        post = File.read('blog/public/post1.html')
+        expect(post).to match(%r{<main>\s*<p class="back-link"><a href="index\.html">.*?</a></p>})
+
+        expect(File.read('blog/public/index.html')).not_to include('back-link')
+      end
+
       it 'embeds BlogPosting JSON-LD on posts' do
         data = JSON.parse(File.read('blog/public/post1.html')[%r{<script type="application/ld\+json">(.+?)</script>}m, 1])
         expect(data['@type']).to eq('BlogPosting')
@@ -177,6 +184,107 @@ describe Parrot::Commands do
         expect(File.read('blog/public/story.html')).to include('<html lang="ml">')
         expect(File.read('blog/public/post1.html')).to include('<html lang="en">')
         expect(File.read('blog/public/index.html')).to include('<html lang="en">')
+      end
+    end
+
+    context 'generated post index listing' do
+      let(:build_config) { Parrot::Config.new(File.join(Dir.pwd, 'blog'), Logger.new(File::NULL)) }
+
+      it 'lists posts newest first using the default format, with no views/index.md' do
+        expect(File.exist?('blog/views/index.md')).to be false
+
+        File.write('blog/views/posts/oldest.md', "<!--\ntitle: Oldest\ndate: 01/01/2020\n-->\n\n# Oldest\n")
+        Parrot::Commands::BuildCommand.new([], build_config).run
+
+        index = File.read('blog/public/index.html')
+        post1_pos = index.index('post1.html')
+        post2_pos = index.index('post2.html')
+        oldest_pos = index.index('oldest.html')
+
+        # the default list_format's {post_date} goes through
+        # post_date_format.on_list ("%m/%Y" by default), not the raw header date
+        expect(index).to include('09/2026')
+        expect(index).to include('01/2020')
+        expect([post1_pos, post2_pos]).to all(be < oldest_pos)
+      end
+
+      it 'titles the index page from config.yaml post_listing.list_title' do
+        Parrot::Commands::BuildCommand.new([], build_config).run
+        expect(File.read('blog/public/index.html')).to include('<h1 id="post-listing">Post listing</h1>')
+
+        File.write('blog/config.yaml', "post_listing:\n  list_title: \"Latest writing\"\n")
+        Parrot::Commands::BuildCommand.new([], build_config).run
+
+        expect(File.read('blog/public/index.html')).to include('<h1 id="latest-writing">Latest writing</h1>')
+      end
+
+      it 'omits the index heading entirely when list_title is empty' do
+        File.write('blog/config.yaml', "post_listing:\n  list_title: \"\"\n")
+        Parrot::Commands::BuildCommand.new([], build_config).run
+
+        index = File.read('blog/public/index.html')
+        expect(index).not_to include('<h1')
+      end
+
+      it 'honours a custom list_format from config.yaml' do
+        File.write('blog/config.yaml', "post_listing:\n  list_format: \"{post_title} -- {%A, %B %d %Y}\"\n")
+        Parrot::Commands::BuildCommand.new([], build_config).run
+
+        index = File.read('blog/public/index.html')
+        expect(index).to include('Tuesday, September 08 2026')
+      end
+
+      it 'links only the title when {post_link} wraps just {post_title}' do
+        File.write('blog/config.yaml', "post_listing:\n  list_format: \"{%d/%m} ~ [{post_title}]({post_link})\"\n")
+        Parrot::Commands::BuildCommand.new([], build_config).run
+
+        index = File.read('blog/public/index.html')
+        expect(index).to include('08/09 ~ <a href="post1.html">About Parrot</a>')
+      end
+
+      it 'links the whole line when {post_link} wraps the entire format' do
+        File.write('blog/config.yaml', "post_listing:\n  list_format: \"[{%d/%m} ~ {post_title}]({post_link})\"\n")
+        Parrot::Commands::BuildCommand.new([], build_config).run
+
+        index = File.read('blog/public/index.html')
+        expect(index).to include('<a href="post1.html">08/09 ~ About Parrot</a>')
+      end
+
+      it 'exposes any custom header field as {post_<key>}' do
+        File.write('blog/config.yaml', "post_listing:\n  list_format: \"{post_title} [{post_category}]\"\n")
+        File.write('blog/views/posts/story.md', "<!--\ntitle: A story\ncategory: Fiction\n-->\n\n# A story\n")
+        Parrot::Commands::BuildCommand.new([], build_config).run
+
+        index = File.read('blog/public/index.html')
+        expect(index).to include('A story [Fiction]')
+      end
+
+      it 'formats {post_date} in list_format per post_date_format.on_list' do
+        File.write('blog/config.yaml',
+                    "post_listing:\n  list_format: \"{post_date} ~ {post_title}\"\npost_date_format:\n  on_list: \"%m/%Y\"\n")
+        Parrot::Commands::BuildCommand.new([], build_config).run
+
+        index = File.read('blog/public/index.html')
+        expect(index).to include('09/2026 ~ About Parrot')
+      end
+
+      it 'formats a literal {post_date} inside a post body per post_date_format.on_post' do
+        File.write('blog/config.yaml', "post_date_format:\n  on_post: \"%A, %B %d %Y\"\n")
+        File.write('blog/views/posts/story.md', "<!--\ntitle: A story\ndate: 08/09/2026\n-->\n\n# A story\n\n_{post_date}_\n")
+        Parrot::Commands::BuildCommand.new([], build_config).run
+
+        expect(File.read('blog/public/story.html')).to include('Tuesday, September 08 2026')
+      end
+
+      it 'groups posts by year under a heading when group_by is year' do
+        File.write('blog/config.yaml', "post_listing:\n  group_by: year\n")
+        File.write('blog/views/posts/old.md', "<!--\ntitle: Old\ndate: 01/01/2020\n-->\n\n# Old\n")
+        Parrot::Commands::BuildCommand.new([], build_config).run
+
+        index = File.read('blog/public/index.html')
+        expect(index).to include('<h2 id="2026">2026</h2>')
+        expect(index).to include('<h2 id="2020">2020</h2>')
+        expect(index.index('2026</h2>')).to be < index.index('2020</h2>')
       end
     end
 
