@@ -50,6 +50,7 @@ module Parrot
       DEFAULT_LIST_FORMAT = "{post_date} ~ [{post_title}]({post_link})"
       DEFAULT_GROUP_BY = "none"
       DEFAULT_LIST_TITLE = "Post listing"
+      DEFAULT_BACK_LINK_TEXT = "← Back to all posts"
 
       # `{post_date}` is the one header field with its own dedicated config,
       # config.yaml's `post_date_format` — a Ruby strftime format string (see
@@ -156,12 +157,24 @@ module Parrot
 
       # Adds a link back to the index above a post's own content, so a
       # visitor who lands directly on a post can get back to the listing.
+      # Its text comes from config.yaml's post_listing.back_link_text,
+      # omitted entirely when that's explicitly set to an empty string.
       def inject_back_link(html)
+        settings = post_listing_settings
+        return html if settings.key?("back_link_text") && settings["back_link_text"].to_s.strip.empty?
+
         main = html.at("main")
         return html unless main
 
-        back_link = Nokogiri::HTML.fragment(%(<p class="back-link"><a href="index.html">← Back to all posts</a></p>))
-        main.prepend_child(back_link)
+        link = Nokogiri::XML::Node.new("a", html)
+        link["href"] = "index.html"
+        link.content = settings["back_link_text"] || DEFAULT_BACK_LINK_TEXT
+
+        paragraph = Nokogiri::XML::Node.new("p", html)
+        paragraph["class"] = "back-link"
+        paragraph.add_child(link)
+
+        main.prepend_child(paragraph)
         html
       end
 

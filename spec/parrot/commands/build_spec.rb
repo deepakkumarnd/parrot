@@ -226,6 +226,20 @@ describe Parrot::Commands do
         expect(index).not_to include('<h1')
       end
 
+      it 'uses config.yaml post_listing.back_link_text for the post back link' do
+        File.write('blog/config.yaml', "post_listing:\n  back_link_text: \"Home\"\n")
+        Parrot::Commands::BuildCommand.new([], build_config).run
+
+        expect(File.read('blog/public/post1.html')).to include('<p class="back-link"><a href="index.html">Home</a></p>')
+      end
+
+      it 'omits the post back link entirely when back_link_text is empty' do
+        File.write('blog/config.yaml', "post_listing:\n  back_link_text: \"\"\n")
+        Parrot::Commands::BuildCommand.new([], build_config).run
+
+        expect(File.read('blog/public/post1.html')).not_to include('back-link')
+      end
+
       it 'honours a custom list_format from config.yaml' do
         File.write('blog/config.yaml', "post_listing:\n  list_format: \"{post_title} -- {%A, %B %d %Y}\"\n")
         Parrot::Commands::BuildCommand.new([], build_config).run

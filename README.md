@@ -116,9 +116,11 @@ examples of everything below.
   `post_date_format.on_post` in `config.yaml` (see "The index page" below).
   `parrot post` writes new posts with one under the title.
 
-Every built post also gets a "← Back to all posts" link (`<p class="back-link">`)
-at the top of its `<main>`, pointing at `index.html`; style it with the
-`.back-link` class in your CSS. The index page doesn't get one.
+Every built post also gets a link back to the index (`<p class="back-link">`) at
+the top of its `<main>`, pointing at `index.html`; style it with the
+`.back-link` class in your CSS. The index page doesn't get one. Its text is
+`config.yaml`'s `post_listing.back_link_text` (default "← Back to all posts";
+"" omits the link — see "The index page" below).
 
 ## Post header
 
@@ -168,6 +170,7 @@ rendered is controlled by `config.yaml` at the blog's root:
 ```yaml
 post_listing:
   list_title: "Post listing"                         # the index page's <h1>; "" omits it
+  back_link_text: "← Back to all posts"               # the link atop every post; "" omits it
   group_by: none                                      # none | year | month
   list_format: "{post_date} ~ [{post_title}]({post_link})"
 

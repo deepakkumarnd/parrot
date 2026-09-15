@@ -11,6 +11,10 @@ post_listing:
   #   month - a "## <Month Year>" heading per month
   group_by: none
 
+  # Text for the link back to the index shown at the top of every post.
+  # Set to "" to omit the link entirely.
+  back_link_text: "← Back to all posts"
+
   # Markdown format string for each post's list entry.
   #   {post_<key>} - that key from the post's header, as plain text:
   #                  {post_title}, {post_lang}, or any custom field you add
