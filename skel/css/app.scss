@@ -1,10 +1,29 @@
 // Write your custom css here
 
+.site-header {
+  text-align: center;
+  padding: 2.5rem 1rem 2rem;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid var(--border);
+}
+
 .site-name {
   display: inline-block;
-  font-size: 1.75rem;
+  font-size: 2rem;
   font-weight: 700;
+  letter-spacing: -0.02em;
   text-decoration: none;
+  color: var(--text);
+
+  &:hover {
+    color: var(--accent);
+  }
+}
+
+.tagline {
+  margin: 0.4rem auto 0;
+  color: var(--text-light);
+  font-size: 1.05rem;
 }
 
 .back-link {
