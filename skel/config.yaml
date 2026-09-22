@@ -11,9 +11,22 @@ post_listing:
   #   month - a "## <Month Year>" heading per month
   group_by: none
 
-  # Text for the link back to the index shown at the top of every post.
+  # Text for the link back to the index shown at the top of every post. It
+  # always points at whichever index page that post actually appears on.
   # Set to "" to omit the link entirely.
   back_link_text: "← Back to all posts"
+
+  # Maximum number of posts on one index page. Once there are more posts
+  # than this, Parrot splits the listing across index.html (newest posts),
+  # index2.html, index3.html, etc., each with a pager linking to the next
+  # and previous page. Leave unset (or 0) to keep every post on index.html.
+  # per_page: 10
+
+  # Text for the pager links at the bottom of a paginated index page. Set
+  # either to "" to omit that link (e.g. on the first/last page, where it
+  # wouldn't point anywhere anyway).
+  newer_link_text: "← Newer posts"
+  older_link_text: "Older posts →"
 
   # Markdown format string for each post's list entry.
   #   {post_<key>} - that key from the post's header, as plain text:

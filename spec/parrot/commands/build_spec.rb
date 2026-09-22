@@ -302,6 +302,107 @@ describe Parrot::Commands do
       end
     end
 
+    context 'post index pagination' do
+      let(:build_config) { Parrot::Config.new(File.join(Dir.pwd, 'blog'), Logger.new(File::NULL)) }
+
+      it 'keeps every post on a single index.html when per_page is unset' do
+        Parrot::Commands::BuildCommand.new([], build_config).run
+        expect(File.exist?('blog/public/index2.html')).to be false
+      end
+
+      it 'splits the listing across index.html, index2.html, etc. once per_page is exceeded' do
+        File.write('blog/config.yaml', "post_listing:\n  per_page: 1\n")
+        File.write('blog/views/posts/oldest.md', "<!--\ntitle: Oldest\ndate: 01/01/2020\n-->\n\n# Oldest\n")
+        Parrot::Commands::BuildCommand.new([], build_config).run
+
+        expect(File.exist?('blog/public/index.html')).to be true
+        expect(File.exist?('blog/public/index2.html')).to be true
+        expect(File.exist?('blog/public/index3.html')).to be true
+        expect(File.exist?('blog/public/index4.html')).to be false
+        expect(File.read('blog/public/index3.html')).to include('oldest.html')
+      end
+
+      it 'links older/newer pages with the default pager text' do
+        File.write('blog/config.yaml', "post_listing:\n  per_page: 1\n")
+        Parrot::Commands::BuildCommand.new([], build_config).run
+
+        page1 = File.read('blog/public/index.html')
+        expect(page1).to include('<a href="index2.html">Older posts →</a>')
+        expect(page1).not_to include('Newer posts')
+
+        page2 = File.read('blog/public/index2.html')
+        expect(page2).to include('<a href="index.html">← Newer posts</a>')
+        expect(page2).not_to include('Older posts')
+      end
+
+      it 'honours custom newer_link_text/older_link_text from config.yaml' do
+        File.write('blog/config.yaml',
+                    "post_listing:\n  per_page: 1\n  newer_link_text: \"Prev\"\n  older_link_text: \"Next\"\n")
+        Parrot::Commands::BuildCommand.new([], build_config).run
+
+        expect(File.read('blog/public/index.html')).to include('>Next<')
+        expect(File.read('blog/public/index2.html')).to include('>Prev<')
+      end
+
+      it 'omits the pager entirely when the only applicable link text is set to empty' do
+        File.write('blog/config.yaml', "post_listing:\n  per_page: 1\n  older_link_text: \"\"\n")
+        Parrot::Commands::BuildCommand.new([], build_config).run
+
+        expect(File.read('blog/public/index.html')).not_to include('pagination')
+      end
+
+      it 'omits the list_title heading on pages after the first' do
+        File.write('blog/config.yaml', "post_listing:\n  per_page: 1\n")
+        Parrot::Commands::BuildCommand.new([], build_config).run
+
+        expect(File.read('blog/public/index.html')).to include('<h1')
+        expect(File.read('blog/public/index2.html')).not_to include('<h1')
+      end
+
+      it "points a pushed-down post's back-link at the index page it actually appears on" do
+        File.write('blog/config.yaml', "post_listing:\n  per_page: 1\n")
+        Parrot::Commands::BuildCommand.new([], build_config).run
+
+        main_html = File.read('blog/public/index2.html')[%r{<main>.*?</main>}m]
+        pushed_post = main_html[/href="([^"]+\.html)"/, 1]
+        expect(File.read("blog/public/#{pushed_post}"))
+          .to include(%(<a href="index2.html">← Back to all posts</a>))
+      end
+
+      it 'removes a stale trailing index page once the post count drops back below per_page' do
+        File.write('blog/config.yaml', "post_listing:\n  per_page: 1\n")
+        Parrot::Commands::BuildCommand.new([], build_config).run
+        expect(File.exist?('blog/public/index2.html')).to be true
+
+        File.write('blog/config.yaml', "post_listing:\n  per_page: 10\n")
+        Parrot::Commands::BuildCommand.new([], build_config).run
+        expect(File.exist?('blog/public/index2.html')).to be false
+      end
+
+      it 'lists every index page in the sitemap' do
+        File.write('blog/config.yaml', "post_listing:\n  per_page: 1\n")
+        Parrot::Commands::BuildCommand.new([], build_config).run
+
+        sitemap = File.read('blog/public/sitemap.xml')
+        expect(sitemap).to include('<loc>https://example.com/</loc>')
+        expect(sitemap).to include('<loc>https://example.com/index2.html</loc>')
+      end
+
+      it "updates a pushed post's back-link when the watcher rebuilds after a new post shifts pagination" do
+        File.write('blog/config.yaml', "post_listing:\n  per_page: 1\n")
+        command = Parrot::Commands::BuildCommand.new([], build_config)
+        command.run
+
+        new_post = 'blog/views/posts/newest.md'
+        File.write(new_post, "<!--\ntitle: Newest\ndate: 01/01/2027\n-->\n\n# Newest\n")
+        command.build(new_post)
+
+        main_html = File.read('blog/public/index2.html')[%r{<main>.*?</main>}m]
+        pushed_post = main_html[/href="([^"]+\.html)"/, 1]
+        expect(File.read("blog/public/#{pushed_post}")).to include('<a href="index2.html">')
+      end
+    end
+
     context 'post header description' do
       let(:build_config) { Parrot::Config.new(File.join(Dir.pwd, 'blog'), Logger.new(File::NULL)) }
 

@@ -51,6 +51,8 @@ module Parrot
       DEFAULT_GROUP_BY = "none"
       DEFAULT_LIST_TITLE = "Post listing"
       DEFAULT_BACK_LINK_TEXT = "← Back to all posts"
+      DEFAULT_NEWER_LINK_TEXT = "← Newer posts"
+      DEFAULT_OLDER_LINK_TEXT = "Older posts →"
 
       # `{post_date}` is the one header field with its own dedicated config,
       # config.yaml's `post_date_format` — a Ruby strftime format string (see
@@ -68,22 +70,46 @@ module Parrot
         @build_path = File.join(app_root, "public")
       end
 
+      # Builds index.html and, once there are more posts than post_listing's
+      # per_page, index2.html, index3.html, etc. — newest posts first, oldest
+      # posts on the highest-numbered page. Any previously-built index page
+      # beyond the current page count is removed, so a shrinking post count
+      # doesn't leave a stale trailing page behind.
       def build_index_page
+        pages = paginated_posts(sorted_posts_metadata)
+
+        pages.each_with_index do |posts_meta, index|
+          build_index_file(index + 1, posts_meta, pages.length)
+        end
+
+        cleanup_stale_index_pages(pages.length)
+      end
+
+      def build_index_file(page_number, posts_meta, total_pages)
         layout = Tilt.new("#{app_root}/views/layout.html.erb")
 
-        text = layout.render { markdown_string(index_markdown).render }
+        text = layout.render { markdown_string(index_markdown(page_number, posts_meta, total_pages)).render }
 
         html = update_internal_links(text)
         copy_image_assets(html)
-        apply_page_meta(html, "index.html")
+        apply_page_meta(html, index_filename(page_number))
 
-        output = File.join(build_path, "index.html")
+        output = File.join(build_path, index_filename(page_number))
         File.write(output, html)
         config.logger.info "Built #{output}"
       end
 
+      # Rebuilds every post, each linking its back-link at whichever index
+      # page it currently falls on — which can shift for posts far from the
+      # top whenever pagination is active and a post is added, removed, or
+      # re-dated, so every post is rebuilt together rather than in isolation.
       def build_posts
-        Dir["#{app_root}/views/posts/*.md"].each { |post_path| build_post(post_path) }
+        posts_meta = sorted_posts_metadata
+        page_lookup = page_number_lookup(posts_meta)
+
+        Dir["#{app_root}/views/posts/*.md"].each do |post_path|
+          build_post(post_path, page_lookup.fetch(File.basename(post_path), 1))
+        end
       end
 
       # Builds public/404.html from views/404.md for hosts that serve it on a
@@ -109,7 +135,7 @@ module Parrot
         config.logger.info "Built #{output}"
       end
 
-      def build_post(post_path)
+      def build_post(post_path, page_number = 1)
         layout = Tilt.new("#{app_root}/views/layout.html.erb")
 
         meta = post_metadata(post_path)
@@ -122,7 +148,7 @@ module Parrot
         html = update_internal_links(text)
         copy_image_assets(html)
         html = inject_scripts(html)
-        html = inject_back_link(html)
+        html = inject_back_link(html, page_number)
 
         output_name = File.basename(post_path).sub('.md', '.html')
         meta["description"] ||= summarize(body)
@@ -156,10 +182,12 @@ module Parrot
       end
 
       # Adds a link back to the index above a post's own content, so a
-      # visitor who lands directly on a post can get back to the listing.
-      # Its text comes from config.yaml's post_listing.back_link_text,
-      # omitted entirely when that's explicitly set to an empty string.
-      def inject_back_link(html)
+      # visitor who lands directly on a post can get back to the listing —
+      # specifically to whichever index page currently lists this post,
+      # since pagination can put it anywhere. Its text comes from
+      # config.yaml's post_listing.back_link_text, omitted entirely when
+      # that's explicitly set to an empty string.
+      def inject_back_link(html, page_number = 1)
         settings = post_listing_settings
         return html if settings.key?("back_link_text") && settings["back_link_text"].to_s.strip.empty?
 
@@ -167,7 +195,7 @@ module Parrot
         return html unless main
 
         link = Nokogiri::XML::Node.new("a", html)
-        link["href"] = "index.html"
+        link["href"] = index_filename(page_number)
         link.content = settings["back_link_text"] || DEFAULT_BACK_LINK_TEXT
 
         paragraph = Nokogiri::XML::Node.new("p", html)
@@ -252,8 +280,14 @@ module Parrot
 
         posts = Dir["#{app_root}/views/posts/*.md"].sort
         post_dates = posts.map { |post_path| iso_date(post_metadata(post_path)["date"]) }.compact
+        newest = post_dates.max
 
-        entries = [{ loc: "#{base}/", lastmod: post_dates.max }]
+        total_pages = paginated_posts(sorted_posts_metadata).length
+        entries = (1..total_pages).map do |page_number|
+          loc = page_number == 1 ? "#{base}/" : "#{base}/#{index_filename(page_number)}"
+          { loc: loc, lastmod: newest }
+        end
+
         posts.each do |post_path|
           name = File.basename(post_path).sub(".md", ".html")
           entries << { loc: "#{base}/#{name}", lastmod: iso_date(post_metadata(post_path)["date"]) }
@@ -366,9 +400,12 @@ module Parrot
           build_index_page
           build_posts
         when %r{\Aviews/posts/[^/]+\.md\z}
-          File.exist?(path) ? build_post(path) : remove_built_post(path)
+          remove_built_post(path) unless File.exist?(path)
           # A post was added, removed or had its date/title/summary changed,
-          # any of which can change the generated index listing.
+          # any of which can change the generated index listing and, when
+          # pagination is active, shift other posts onto a different index
+          # page — so every post is rebuilt to keep back-links correct.
+          build_posts
           build_index_page
           build_sitemap
           build_feed
@@ -410,7 +447,7 @@ module Parrot
       # post's header Hash (empty for the index).
       def apply_page_meta(html, output_name, meta = {})
         title = meta["title"]
-        is_post = output_name != "index.html"
+        is_post = !index_page?(output_name)
 
         if title && !title.empty?
           title_tag = html.at("head title")
@@ -426,7 +463,7 @@ module Parrot
         base = canonical_base(html)
         return unless base
 
-        page_url = is_post ? "#{base}/#{output_name}" : "#{base}/"
+        page_url = output_name == "index.html" ? "#{base}/" : "#{base}/#{output_name}"
 
         og = html.at('head meta[property="og:url"]')
         og["content"] = page_url if og
@@ -702,12 +739,90 @@ module Parrot
         ) { content }
       end
 
-      # The index page's Markdown body: a heading (config.yaml's
-      # post_listing.list_title, omitted entirely when explicitly set to an
-      # empty string) followed by the post listing, generated from
-      # views/posts/*.md — there is no views/index.md.
-      def index_markdown
-        "#{list_title_heading}#{render_post_listing(sorted_posts_metadata)}\n"
+      # One index page's Markdown body: a heading (config.yaml's
+      # post_listing.list_title, page 1 only, omitted entirely when
+      # explicitly set to an empty string) followed by that page's slice of
+      # the post listing and, when there's more than one page, a pager —
+      # generated from views/posts/*.md, there is no views/index.md.
+      def index_markdown(page_number, posts_meta, total_pages)
+        heading = page_number == 1 ? list_title_heading : ""
+        markdown = "#{heading}#{render_post_listing(posts_meta)}\n"
+
+        pager = pager_markdown(page_number, total_pages)
+        markdown << "\n#{pager}\n" unless pager.empty?
+
+        markdown
+      end
+
+      # "index.html" for page 1, "index2.html", "index3.html", … after that.
+      def index_filename(page_number)
+        page_number == 1 ? "index.html" : "index#{page_number}.html"
+      end
+
+      def index_page?(output_name)
+        output_name.match?(/\Aindex\d*\.html\z/)
+      end
+
+      # config.yaml's post_listing.per_page as an Integer, or nil when unset
+      # (or not a positive number) — meaning "don't paginate".
+      def per_page_setting
+        value = post_listing_settings["per_page"].to_i
+        value.positive? ? value : nil
+      end
+
+      # Splits already-sorted (newest-first) post metadata into per_page-sized
+      # pages. A single page (even an empty one) when per_page isn't set or
+      # there aren't enough posts to need a second page — same as Parrot's
+      # single-index-page behaviour before pagination existed.
+      def paginated_posts(posts_meta)
+        size = per_page_setting
+        return [posts_meta] if size.nil? || posts_meta.length <= size
+
+        posts_meta.each_slice(size).to_a
+      end
+
+      # Maps each post's filename to the index page number it appears on, so
+      # every post's back-link can point at the right page.
+      def page_number_lookup(posts_meta)
+        lookup = {}
+        paginated_posts(posts_meta).each_with_index do |chunk, index|
+          chunk.each { |meta| lookup[meta["__filename"]] = index + 1 }
+        end
+        lookup
+      end
+
+      # A "← Newer posts" / "Older posts →" markdown line for one index page,
+      # linking to the adjacent page(s); "" when there's nothing to link to
+      # (a single-page site, or the newer/older side is explicitly disabled
+      # via an empty post_listing.newer_link_text/older_link_text).
+      def pager_markdown(page_number, total_pages)
+        settings = post_listing_settings
+        newer_text = settings.fetch("newer_link_text", DEFAULT_NEWER_LINK_TEXT)
+        older_text = settings.fetch("older_link_text", DEFAULT_OLDER_LINK_TEXT)
+
+        links = []
+        if page_number > 1 && !newer_text.to_s.empty?
+          links << "[#{newer_text}](#{index_filename(page_number - 1)})"
+        end
+        if page_number < total_pages && !older_text.to_s.empty?
+          links << "[#{older_text}](#{index_filename(page_number + 1)})"
+        end
+        return "" if links.empty?
+
+        "#{links.join(' ~ ')}\n{: .pagination}"
+      end
+
+      # Deletes any previously-built index page beyond the current page
+      # count, so a shrinking post count doesn't leave a stale index3.html
+      # behind after a rebuild drops it to 2 pages.
+      def cleanup_stale_index_pages(total_pages)
+        Dir[File.join(build_path, "index*.html")].each do |path|
+          match = File.basename(path).match(/\Aindex(\d*)\.html\z/)
+          next unless match
+
+          page_number = match[1].empty? ? 1 : match[1].to_i
+          File.delete(path) if page_number > total_pages
+        end
       end
 
       def list_title_heading

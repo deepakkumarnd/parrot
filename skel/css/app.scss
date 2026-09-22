@@ -35,3 +35,14 @@
     text-decoration: none;
   }
 }
+
+.pagination {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 2rem;
+  font-size: 0.9rem;
+
+  a {
+    text-decoration: none;
+  }
+}
