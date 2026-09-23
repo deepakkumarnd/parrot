@@ -1,5 +1,5 @@
 # coding: utf-8
-require_relative 'lib/parrot/version'
+require_relative 'lib/parrot/metadata'
 
 Gem::Specification.new do |spec|
   spec.name          = 'parrot'
@@ -8,7 +8,7 @@ Gem::Specification.new do |spec|
   spec.email         = ['deepakkumarnd@gmail.com']
   spec.summary       = 'A static markdown blog builder written in ruby for minimalist bloggers'
   spec.description   = 'A static blogging tool written in ruby, posts are in markdown format'
-  spec.homepage      = 'https://github.com/42races/parrot'
+  spec.homepage      = Parrot::HOMEPAGE
   spec.license       = 'MIT'
 
   # Runtime Dependencies

@@ -1,6 +1,6 @@
 require 'optparse'
 
-require_relative 'parrot/version'
+require_relative 'parrot/metadata'
 require_relative 'parrot/runner'
 require_relative 'parrot/logger'
 require_relative 'parrot/constants'
@@ -14,9 +14,6 @@ module Parrot
     serve: "serve - Start development server locally",
     post: "post --title <post title> - Add new post with a title"
   }.freeze
-
-  spec = Gem::Specification.find_by_name('parrot')
-  
   USAGE_LINE = "parrot [options] [subcommand] [args]"
 
   HELP_TEXT =
@@ -39,9 +36,9 @@ HELP_TEXT
   HELP_HEADER = 
 <<HEADER_TEXT
 Usage:\t#{USAGE_LINE}
-Repository:\t#{spec.homepage}
-Repository:\t#{spec.homepage}/blob/master/README.md
-Version:\t#{spec.version}
+Repository:\t#{Parrot::HOMEPAGE}
+Repository:\t#{Parrot::HOMEPAGE}/blob/master/README.md
+Version:\t#{Parrot::VERSION}
 HEADER_TEXT
 
   class Parrot
@@ -50,7 +47,7 @@ HEADER_TEXT
     attr_accessor :root_dir, :logger, :config
 
     def initialize(args = [])
-      @options = { quiet: false }
+      @options = { quiet: testing? || false }
       extract_options!(args)
       @command = args.shift
       @args = args
@@ -90,6 +87,10 @@ HEADER_TEXT
         sub_command_doc,
         HELP_TEXT
       ].join(line_sep)
+    end
+
+    private def testing?
+      ENV['PARROT_TESTING'] == "true"
     end
 
     private def extract_options!(args)
