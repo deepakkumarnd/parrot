@@ -1,5 +1,6 @@
 require 'optparse'
 
+require_relative 'helpers'
 require_relative 'parrot/metadata'
 require_relative 'parrot/runner'
 require_relative 'parrot/logger'
@@ -47,7 +48,7 @@ HEADER_TEXT
     attr_accessor :root_dir, :logger, :config
 
     def initialize(args = [])
-      @options = { quiet: testing? || false }
+      @options = { quiet: Helpers.testing? || false }
       extract_options!(args)
       @command = args.shift
       @args = args
@@ -87,10 +88,6 @@ HEADER_TEXT
         sub_command_doc,
         HELP_TEXT
       ].join(line_sep)
-    end
-
-    private def testing?
-      ENV['PARROT_TESTING'] == "true"
     end
 
     private def extract_options!(args)
