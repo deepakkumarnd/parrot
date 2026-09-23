@@ -6,12 +6,49 @@ require_relative 'parrot/logger'
 require_relative 'parrot/constants'
 
 module Parrot
-
   Config = Struct.new(:root_dir, :logger)
+
+  SUB_COMMANDS_DOC = {
+    new: "new <blog_name> - Create new blog",
+    build: "build - Build the blog",
+    serve: "serve - Start development server locally",
+    post: "post --title <post title> - Add new post with a title"
+  }.freeze
+
+  spec = Gem::Specification.find_by_name('parrot')
+  
+  USAGE_LINE = "parrot [options] [subcommand] [args]"
+
+  HELP_TEXT =
+<<HELP_TEXT
+Examples:
+  - Create new blog
+    parrot new blog
+  
+  - Start development server
+    cd blog
+    parrot serve
+
+  - Add a new post
+    parrot post --title \"My first post\"
+
+  - Build the blog
+    parrot build
+HELP_TEXT
+
+  HELP_HEADER = 
+<<HEADER_TEXT
+Usage:\t#{USAGE_LINE}
+Repository:\t#{spec.homepage}
+Repository:\t#{spec.homepage}/blob/master/README.md
+Version:\t#{spec.version}
+HEADER_TEXT
+
   class Parrot
-    SUB_COMMANDS = %w( new build serve post )
+    SUB_COMMANDS = SUB_COMMANDS_DOC.keys.map(&:to_s).freeze
 
     attr_accessor :root_dir, :logger, :config
+
     def initialize(args = [])
       @options = { quiet: false }
       extract_options!(args)
@@ -32,13 +69,10 @@ module Parrot
       exit(1)
     end
 
-    def self.usage
-      "Usage: parrot <#{SUB_COMMANDS.join('|')}> options"
-    end
-
     def exit_if_invalid(command)
       if command.nil? || !SUB_COMMANDS.include?(command)
-        puts(Parrot.usage)
+        puts("That is not a valid command. View detailed help with parrot -h")
+        puts USAGE_LINE
         exit!
       end
     end
@@ -47,36 +81,26 @@ module Parrot
       @options[:quiet]
     end
 
-    private
+    def usage(parser = nil)
+      sub_command_doc = "Sub Commands:\n" + SUB_COMMANDS_DOC.values.join("\n") + "\n"
+      line_sep = '-' * 80 + "\n"
+      [
+        HELP_HEADER, 
+        parser,
+        sub_command_doc,
+        HELP_TEXT
+      ].join(line_sep)
+    end
 
-    def extract_options!(args)
-      OptionParser.new do |opts|
-        opts.on('-q', '--quiet', 'Quiet mode') { @options[:quiet] = true }
-        opts.on_tail('-v', '--version', 'Prints version information') do
+    private def extract_options!(args)
+      OptionParser.new("Usage: #{USAGE_LINE}") do |parser|
+        parser.on('-q', '--quiet', 'Quiet mode') { @options[:quiet] = true }
+        parser.on_tail('-v', '--version', 'Prints version information') do
           puts("Parrot #{VERSION}")
           exit(0)
         end
-        opts.on_tail('-h', '--help', 'Usage instructions') do
-          puts(Parrot.usage)
-          puts(
-            """
-            Create a new blog
-
-            $ parrot new blog
-
-            Start the server
-
-            $ cd blog
-            $ parrot serve
-
-            Add a new post
-
-            $ parrot post --title \"My first post\"
-
-            Build the blog
-
-            $ parrot build
-            """)
+        parser.on_tail('-h', '--help', 'Usage instructions') do
+          puts usage(parser)
           exit(0)
         end
       end.order!(args)
