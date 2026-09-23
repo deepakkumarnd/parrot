@@ -1,7 +1,7 @@
 require 'spec_helper'
 
 describe Parrot::Commands do
-  let(:config)  { Parrot::Config.new(Dir.pwd, Logger.new(STDOUT)) }
+  let(:config)  { Parrot::Config.new(Dir.pwd, TestLogger) }
 
   before do
     # create a new application
@@ -19,12 +19,12 @@ describe Parrot::Commands do
     end
 
     context 'per-page head metadata' do
-      let(:build_config) { Parrot::Config.new(File.join(Dir.pwd, 'blog'), Logger.new(File::NULL)) }
+      let(:build_config) { Parrot::Config.new(File.join(Dir.pwd, 'blog'), TestLogger) }
 
       before { Parrot::Commands::BuildCommand.new([], build_config).run }
 
       it 'sets the <title> from the post header' do
-        expect(File.read('blog/public/post1.html')).to include('<title>About Parrot</title>')
+        expect(File.read('blog/public/about_parrot.html')).to include('<title>About Parrot</title>')
       end
 
       it 'keeps the layout title on the index page' do
@@ -32,9 +32,9 @@ describe Parrot::Commands do
       end
 
       it 'points og:url and canonical at each generated page' do
-        post = File.read('blog/public/post2.html')
-        expect(post).to include('<meta property="og:url" content="https://example.com/post2.html">')
-        expect(post).to include('<link rel="canonical" href="https://example.com/post2.html">')
+        post = File.read('blog/public/sample.html')
+        expect(post).to include('<meta property="og:url" content="https://example.com/sample.html">')
+        expect(post).to include('<link rel="canonical" href="https://example.com/sample.html">')
       end
 
       it 'points the index og:url and canonical at the site root' do
@@ -44,22 +44,22 @@ describe Parrot::Commands do
       end
 
       it 'sets og:title per page from the same source as <title>' do
-        expect(File.read('blog/public/post1.html')).to include('<meta property="og:title" content="About Parrot">')
+        expect(File.read('blog/public/about_parrot.html')).to include('<meta property="og:title" content="About Parrot">')
         expect(File.read('blog/public/index.html')).to include('<meta property="og:title" content="Parrot">')
       end
 
       it 'rewrites a relative og:image to an absolute URL and ships the file' do
-        expect(File.read('blog/public/post1.html'))
+        expect(File.read('blog/public/about_parrot.html'))
           .to include('<meta property="og:image" content="https://example.com/images/parrot.jpeg">')
         expect(File.exist?('blog/public/images/parrot.jpeg')).to be true
       end
 
       it 'keeps the Twitter Card tag from the layout' do
-        expect(File.read('blog/public/post1.html')).to include('<meta name="twitter:card" content="summary_large_image">')
+        expect(File.read('blog/public/about_parrot.html')).to include('<meta name="twitter:card" content="summary_large_image">')
       end
 
       it 'marks posts as og:type article with an ISO article:published_time' do
-        post = File.read('blog/public/post1.html')
+        post = File.read('blog/public/about_parrot.html')
         expect(post).to include('<meta property="og:type" content="article">')
         expect(post).to include('<meta property="article:published_time" content="2026-09-08">')
       end
@@ -74,8 +74,8 @@ describe Parrot::Commands do
         sitemap = File.read('blog/public/sitemap.xml')
         expect(sitemap).to start_with('<?xml version="1.0" encoding="UTF-8"?>')
         expect(sitemap).to include('<loc>https://example.com/</loc>')
-        expect(sitemap).to include('<loc>https://example.com/post1.html</loc>')
-        expect(sitemap).to include('<loc>https://example.com/post2.html</loc>')
+        expect(sitemap).to include('<loc>https://example.com/about_parrot.html</loc>')
+        expect(sitemap).to include('<loc>https://example.com/sample.html</loc>')
         expect(sitemap).to include('<lastmod>2026-09-08</lastmod>')
       end
 
@@ -86,11 +86,11 @@ describe Parrot::Commands do
       end
 
       it 'sets <html lang> from the post header' do
-        expect(File.read('blog/public/post1.html')).to include('<html lang="en">')
+        expect(File.read('blog/public/about_parrot.html')).to include('<html lang="en">')
       end
 
       it 'loads app.js with defer and warms up the CDNs' do
-        head = File.read('blog/public/post1.html')
+        head = File.read('blog/public/about_parrot.html')
         expect(head).to include('<script src="app.js" defer>')
         expect(head).to include('<link rel="preconnect" href="https://cdn.simplecss.org"')
         expect(head).to include('<link rel="preconnect" href="https://cdn.jsdelivr.net"')
@@ -103,7 +103,7 @@ describe Parrot::Commands do
       end
 
       it 'fills description, og:description and twitter:description from the first paragraph' do
-        head = File.read('blog/public/post1.html')
+        head = File.read('blog/public/about_parrot.html')
         summary = 'Parrot turns a folder of Markdown into a static blog.'
         expect(head).to include(%(<meta name="description" content="#{summary}))
         expect(head).to include(%(<meta property="og:description" content="#{summary}))
@@ -111,24 +111,24 @@ describe Parrot::Commands do
       end
 
       it 'maps lang onto og:locale' do
-        expect(File.read('blog/public/post1.html')).to include('<meta property="og:locale" content="en_US">')
+        expect(File.read('blog/public/about_parrot.html')).to include('<meta property="og:locale" content="en_US">')
       end
 
       it 'renders exactly one <h1> per page' do
-        %w[index post1 post2].each do |name|
+        %w[index about_parrot sample].each do |name|
           expect(File.read("blog/public/#{name}.html").scan('<h1').size).to eq(1)
         end
       end
 
       it 'links back to the index from the top of each post, but not from the index itself' do
-        post = File.read('blog/public/post1.html')
+        post = File.read('blog/public/about_parrot.html')
         expect(post).to match(%r{<main>\s*<p class="back-link"><a href="index\.html">.*?</a></p>})
 
         expect(File.read('blog/public/index.html')).not_to include('back-link')
       end
 
       it 'embeds BlogPosting JSON-LD on posts' do
-        data = JSON.parse(File.read('blog/public/post1.html')[%r{<script type="application/ld\+json">(.+?)</script>}m, 1])
+        data = JSON.parse(File.read('blog/public/about_parrot.html')[%r{<script type="application/ld\+json">(.+?)</script>}m, 1])
         expect(data['@type']).to eq('BlogPosting')
         expect(data['headline']).to eq('About Parrot')
         expect(data['datePublished']).to eq('2026-09-08')
@@ -144,14 +144,14 @@ describe Parrot::Commands do
       it 'writes an RSS feed and links it for autodiscovery' do
         feed = File.read('blog/public/feed.xml')
         expect(feed).to include('<rss version="2.0"')
-        expect(feed).to include('<link>https://example.com/post1.html</link>')
+        expect(feed).to include('<link>https://example.com/about_parrot.html</link>')
         expect(feed).to include('<pubDate>Tue, 08 Sep 2026 00:00:00 -0000</pubDate>')
-        expect(File.read('blog/public/post1.html'))
+        expect(File.read('blog/public/about_parrot.html'))
           .to include('<link rel="alternate" type="application/rss+xml" title="Parrot" href="https://example.com/feed.xml">')
       end
 
       it 'emits og:image:width/height read from the image file' do
-        head = File.read('blog/public/post1.html')
+        head = File.read('blog/public/about_parrot.html')
         expect(head).to include('<meta property="og:image:width" content="1024">')
         expect(head).to include('<meta property="og:image:height" content="1024">')
       end
@@ -182,7 +182,7 @@ describe Parrot::Commands do
         Parrot::Commands::BuildCommand.new([], build_config).run
 
         expect(File.read('blog/public/story.html')).to include('<html lang="ml">')
-        expect(File.read('blog/public/post1.html')).to include('<html lang="en">')
+        expect(File.read('blog/public/about_parrot.html')).to include('<html lang="en">')
         expect(File.read('blog/public/index.html')).to include('<html lang="en">')
       end
     end
@@ -197,15 +197,15 @@ describe Parrot::Commands do
         Parrot::Commands::BuildCommand.new([], build_config).run
 
         index = File.read('blog/public/index.html')
-        post1_pos = index.index('post1.html')
-        post2_pos = index.index('post2.html')
+        about_pos = index.index('about_parrot.html')
+        sample_pos = index.index('sample.html')
         oldest_pos = index.index('oldest.html')
 
         # the default list_format's {post_date} goes through
         # post_date_format.on_list ("%m/%Y" by default), not the raw header date
         expect(index).to include('09/2026')
         expect(index).to include('01/2020')
-        expect([post1_pos, post2_pos]).to all(be < oldest_pos)
+        expect([about_pos, sample_pos]).to all(be < oldest_pos)
       end
 
       it 'titles the index page from config.yaml post_listing.list_title' do
@@ -230,14 +230,14 @@ describe Parrot::Commands do
         File.write('blog/config.yaml', "post_listing:\n  back_link_text: \"Home\"\n")
         Parrot::Commands::BuildCommand.new([], build_config).run
 
-        expect(File.read('blog/public/post1.html')).to include('<p class="back-link"><a href="index.html">Home</a></p>')
+        expect(File.read('blog/public/about_parrot.html')).to include('<p class="back-link"><a href="index.html">Home</a></p>')
       end
 
       it 'omits the post back link entirely when back_link_text is empty' do
         File.write('blog/config.yaml', "post_listing:\n  back_link_text: \"\"\n")
         Parrot::Commands::BuildCommand.new([], build_config).run
 
-        expect(File.read('blog/public/post1.html')).not_to include('back-link')
+        expect(File.read('blog/public/about_parrot.html')).not_to include('back-link')
       end
 
       it 'honours a custom list_format from config.yaml' do
@@ -253,7 +253,7 @@ describe Parrot::Commands do
         Parrot::Commands::BuildCommand.new([], build_config).run
 
         index = File.read('blog/public/index.html')
-        expect(index).to include('08/09 ~ <a href="post1.html">About Parrot</a>')
+        expect(index).to include('08/09 ~ <a href="about_parrot.html">About Parrot</a>')
       end
 
       it 'links the whole line when {post_link} wraps the entire format' do
@@ -261,7 +261,7 @@ describe Parrot::Commands do
         Parrot::Commands::BuildCommand.new([], build_config).run
 
         index = File.read('blog/public/index.html')
-        expect(index).to include('<a href="post1.html">08/09 ~ About Parrot</a>')
+        expect(index).to include('<a href="about_parrot.html">08/09 ~ About Parrot</a>')
       end
 
       it 'exposes any custom header field as {post_<key>}' do

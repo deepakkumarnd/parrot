@@ -1,11 +1,11 @@
 require 'spec_helper'
 
 describe Parrot::Commands do
-  let(:config) { Parrot::Config.new(File.expand_path('blog'), Logger.new(STDOUT)) }
+  let(:config) { Parrot::Config.new(File.expand_path('blog'), TestLogger) }
 
   before do
     FileUtils.rm_rf('blog')
-    Parrot::Commands::NewCommand.new(%w( blog ), Parrot::Config.new(Dir.pwd, Logger.new(STDOUT))).run
+    Parrot::Commands::NewCommand.new(%w( blog ), config).run
   end
 
   after do

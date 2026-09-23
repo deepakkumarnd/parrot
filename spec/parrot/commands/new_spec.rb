@@ -1,7 +1,7 @@
 require 'spec_helper'
 
 describe Parrot::Commands do
-  let(:config)  { Parrot::Config.new(Dir.pwd, ::Parrot::ParrotLoggerBuilder .new().logger) }
+  let(:config)  { Parrot::Config.new(Dir.pwd, TestLogger) }
 
   context 'NewCommand' do
     it 'has a run method' do

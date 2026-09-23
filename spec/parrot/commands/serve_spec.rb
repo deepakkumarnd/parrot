@@ -1,5 +1,5 @@
 describe Parrot::Commands do
-  let(:config)  { Parrot::Config.new(Dir.pwd, Logger.new(STDOUT)) }
+  let(:config)  { Parrot::Config.new(Dir.pwd, TestLogger) }
 
   before do
     # create a new application

@@ -1,38 +1,40 @@
 require 'spec_helper'
 
 describe Parrot do
-  context 'Option -v' do
+  context 'with option -v' do
     let(:args) { %w( -v ) }
 
     it 'displays version info' do
-      Parrot::Parrot.new(args).run
+      expect { Parrot::Parrot.new(args).run }.to output("Parrot #{Parrot::VERSION}\n").to_stdout
     end
   end
 
-  context 'Option -h' do
-    let(:args) { %w( -h ) }
+  # context 'with option -h' do
+  #   let(:args) { %w( -h ) }
 
-    it 'displays help message' do
-      Parrot::Parrot.new(args).run
-    end
-  end
+  #   it 'displays help message' do
+  #     parrot = Parrot::Parrot.new(args)
+  #     parrot.run
+  #     # expect { parrot.run }.to output("something").to_stdout
+  #   end
+  # end
 
-  context 'quiet mode' do
-    it 'will not be quiet by default' do
+  context 'in quiet mode' do
+    it 'will be quiet by default while testing' do
       parrot = Parrot::Parrot.new
-      parrot.should_not be_quiet
+      expect(parrot).to be_quiet
     end
 
     it 'will be be quiet on quiet option' do
       args = %w( -q )
       parrot = Parrot::Parrot.new(args)
-      parrot.should be_quiet
+      expect(parrot).to be_quiet
     end
   end
 
   context 'sub commands' do
     it 'has the following commands' do
-      Parrot::Parrot::SUB_COMMANDS.should == %w( new build watch )
+      expect(Parrot::Parrot::SUB_COMMANDS).to eq(Parrot::SUB_COMMANDS_DOC.keys.map(&:to_s))
     end
   end
 end

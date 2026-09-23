@@ -58,6 +58,7 @@ HEADER_TEXT
     end
 
     def run
+      return if @command.nil?
       exit_if_invalid(@command)
       Runner.new(@command, @args, self.config).run_command
     rescue ArgumentError => e
@@ -68,7 +69,7 @@ HEADER_TEXT
     end
 
     def exit_if_invalid(command)
-      if command.nil? || !SUB_COMMANDS.include?(command)
+      if !SUB_COMMANDS.include?(command)
         puts("That is not a valid command. View detailed help with parrot -h")
         puts USAGE_LINE
         exit!
@@ -95,11 +96,9 @@ HEADER_TEXT
         parser.on('-q', '--quiet', 'Quiet mode') { @options[:quiet] = true }
         parser.on_tail('-v', '--version', 'Prints version information') do
           puts("Parrot #{VERSION}")
-          exit(0)
         end
         parser.on_tail('-h', '--help', 'Usage instructions') do
           puts usage(parser)
-          exit(0)
         end
       end.order!(args)
       # Stop at the first non-option (the sub-command) so flags that belong to

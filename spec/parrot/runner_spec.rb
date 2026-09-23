@@ -1,7 +1,7 @@
 require 'spec_helper'
 
 describe Parrot::Runner do
-  let(:config)  { Parrot::Config.new(Dir.pwd, Logger.new(STDOUT)) }
+  let(:config)  { Parrot::Config.new(Dir.pwd, TestLogger) }
 
   context 'Runner class' do
     it 'should raise error if no application name provided for the new sub command' do
