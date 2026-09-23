@@ -26,7 +26,12 @@ describe Parrot::ParrotLoggerBuilder do
   end
 
   it 'sets the log device as STDOUT by default' do
+    allow(Parrot::Helpers).to receive(:testing?).and_return(false)
     expect(parrot_logger.device).to eq(STDOUT)
+  end
+
+  it 'In test mode the device will be set to a test log file' do
+    expect(File.basename(parrot_logger.device.path)).to eq("parrot.test.log")
   end
 
   it 'sets the log device as a file if the quiet mode is turned on' do
