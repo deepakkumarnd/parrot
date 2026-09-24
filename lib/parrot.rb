@@ -9,13 +9,16 @@ require_relative 'parrot/constants'
 module Parrot
   Config = Struct.new(:root_dir, :logger)
 
+  SubcommandEntry = Struct.new(:usage, :docstr)
+
   SUB_COMMANDS_DOC = {
-    new: "new <blog_name> - Create new blog",
-    build: "build - Build the blog",
-    serve: "serve - Start development server locally",
-    post: "post --title <post title> - Add new post with a title"
+    new: SubcommandEntry.new('new <blog_name>',  'Create new blog'),
+    build: SubcommandEntry.new('build', 'Build the blog'),
+    serve: SubcommandEntry.new('serve', 'Start development server locally'),
+    post: SubcommandEntry.new('post --title <post title>', 'Add new post with a title')
   }.freeze
-  USAGE_LINE = "parrot [options] [subcommand] [args]"
+  
+  USAGE_LINE = 'parrot [options] [subcommand] [args]'
 
   HELP_TEXT =
 <<HELP_TEXT
@@ -36,10 +39,10 @@ HELP_TEXT
 
   HELP_HEADER = 
 <<HEADER_TEXT
-Usage:\t#{USAGE_LINE}
-Repository:\t#{Parrot::HOMEPAGE}
-Repository:\t#{Parrot::HOMEPAGE}/blob/master/README.md
-Version:\t#{Parrot::VERSION}
+Version:          #{Parrot::VERSION}
+Usage:            #{USAGE_LINE}
+Repository:       #{Parrot::HOMEPAGE}
+Repository:       #{Parrot::HOMEPAGE}/blob/master/README.md
 HEADER_TEXT
 
   class Parrot
@@ -81,7 +84,13 @@ HEADER_TEXT
     end
 
     def usage(parser = nil)
-      sub_command_doc = "Sub Commands:\n" + SUB_COMMANDS_DOC.values.join("\n") + "\n"
+      max_length = SUB_COMMANDS_DOC.map { |_k, v| v.usage.length }.max + 10
+      sub_command_doc = SUB_COMMANDS_DOC.map do |command, entry|
+        entry_text = "#{entry.usage}".ljust(max_length)
+        "#{entry_text}#{entry.docstr}"
+      end.join("\n")
+
+      sub_command_doc = "Sub Commands:\n#{sub_command_doc}\n"
       line_sep = '-' * 80 + "\n"
       [
         HELP_HEADER, 
@@ -95,9 +104,9 @@ HEADER_TEXT
       OptionParser.new("Usage: #{USAGE_LINE}") do |parser|
         parser.on('-q', '--quiet', 'Quiet mode') { @options[:quiet] = true }
         parser.on_tail('-v', '--version', 'Prints version information') do
-          puts("Parrot #{VERSION}")
+          puts("Parrot: #{VERSION}")
         end
-        parser.on_tail('-h', '--help', 'Usage instructions') do
+        parser.on_tail('-h', '--help', 'Prints usage instruction') do
           puts usage(parser)
         end
       end.order!(args)
