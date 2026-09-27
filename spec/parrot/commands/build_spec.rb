@@ -210,12 +210,12 @@ describe Parrot::Commands do
 
       it 'titles the index page from config.yaml post_listing.list_title' do
         Parrot::Commands::BuildCommand.new([], build_config).run
-        expect(File.read('blog/public/index.html')).to include('<h1 id="post-listing">Post listing</h1>')
+        expect(File.read('blog/public/index.html')).to include('<h1>Post listing</h1>')
 
         File.write('blog/config.yaml', "post_listing:\n  list_title: \"Latest writing\"\n")
         Parrot::Commands::BuildCommand.new([], build_config).run
 
-        expect(File.read('blog/public/index.html')).to include('<h1 id="latest-writing">Latest writing</h1>')
+        expect(File.read('blog/public/index.html')).to include('<h1>Latest writing</h1>')
       end
 
       it 'omits the index heading entirely when list_title is empty' do
@@ -296,8 +296,8 @@ describe Parrot::Commands do
         Parrot::Commands::BuildCommand.new([], build_config).run
 
         index = File.read('blog/public/index.html')
-        expect(index).to include('<h2 id="2026">2026</h2>')
-        expect(index).to include('<h2 id="2020">2020</h2>')
+        expect(index).to include('<h2>2026</h2>')
+        expect(index).to include('<h2>2020</h2>')
         expect(index.index('2026</h2>')).to be < index.index('2020</h2>')
       end
     end
