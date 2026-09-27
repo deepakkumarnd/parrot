@@ -274,7 +274,7 @@ module Parrot
       def build_sitemap
         base = site_base_url
         unless base
-          config.logger.info "No og:url/canonical in the layout, skipping sitemap.xml"
+          config.logger.warn "No og:url/canonical in the layout, skipping sitemap.xml"
           return
         end
 
@@ -735,7 +735,8 @@ module Parrot
           syntax_highlighter: 'rouge',
           syntax_highlighter_opts: { formatter: CodeFormatter },
           math_engine: 'mathjax',
-          math_engine_opts: { format: [:html] }
+          math_engine_opts: { format: [:html] },
+          auto_ids: false
         ) { content }
       end
 
