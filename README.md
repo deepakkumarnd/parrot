@@ -257,7 +257,7 @@ sitemap and feed) for hosts that serve it on a missing path.
 ## Development
 
 ```
-$ bundle install
+$ ./bin/setup                 # install dependencies and install githooks
 $ rspec                       # run the test suite
 $ rspec -f d                  # documentation format
 ```
