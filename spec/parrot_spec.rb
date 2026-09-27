@@ -5,7 +5,7 @@ describe Parrot do
     let(:args) { %w( -v ) }
 
     it 'displays version info' do
-      expect { Parrot::Parrot.new(args).run }.to output("Parrot #{Parrot::VERSION}\n").to_stdout
+      expect { Parrot::Parrot.new(args).run }.to output("Parrot: #{Parrot::VERSION}\n").to_stdout
     end
   end
 
