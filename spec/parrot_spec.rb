@@ -9,15 +9,13 @@ describe Parrot do
     end
   end
 
-  # context 'with option -h' do
-  #   let(:args) { %w( -h ) }
-
-  #   it 'displays help message' do
-  #     parrot = Parrot::Parrot.new(args)
-  #     parrot.run
-  #     # expect { parrot.run }.to output("something").to_stdout
-  #   end
-  # end
+  
+  context 'with option -h' do
+    let(:args) { %w( -h ) }
+    it 'displays help message' do
+      expect { Parrot::Parrot.new(args).run }.to output(/Sub Commands:/).to_stdout
+    end
+  end
 
   context 'in quiet mode' do
     it 'will be quiet by default while testing' do

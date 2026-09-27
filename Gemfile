@@ -1,4 +1,11 @@
 source 'https://rubygems.org'
 
-# All runtime and development dependencies are defined in parrot.gemspec
+# define only the development dependencies here
+group :development do
+  gem 'debug'
+  gem 'rspec'
+  gem 'pry'
+end
+
+# All runtime dependencies are defined in gemspec
 gemspec

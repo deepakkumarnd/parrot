@@ -1,4 +1,5 @@
 require 'pry'
+require 'debug'
 require_relative '../lib/parrot'
 
 ENV['PARROT_TESTING'] = "true"
