@@ -7,7 +7,7 @@ require_relative 'parrot/logger'
 require_relative 'parrot/constants'
 
 module Parrot
-  Config = Struct.new(:root_dir, :logger)
+  Config = Struct.new(:root_dir, :logger, :build_mode)
 
   SubcommandEntry = Struct.new(:usage, :docstr)
 

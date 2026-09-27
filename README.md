@@ -1,6 +1,6 @@
 # Parrot
 
-A small static site generator for Markdown blogs, written in Ruby. Point it at a
+A static site generator for Markdown blogs, written in Ruby. Point it at a
 folder of Markdown and it produces a folder of HTML/CSS/JS. Syntax highlighting
 and LaTeX math work out of the box.
 
@@ -77,6 +77,9 @@ There's no `views/index.md` — the home page is generated at build time from
 everything in `views/posts/*.md`.
 
 ## Writing posts
+
+Parrot uses simple markdown format https://www.markdownguide.org/basic-syntax/ for
+text formatting.
 
 Posts are [kramdown](https://kramdown.gettalong.org/) Markdown with GitHub-style
 fenced code blocks. A fresh blog ships `views/posts/post1.md` (headings, code,
@@ -160,6 +163,19 @@ Other layout defaults worth knowing: `app.js` loads with `defer`, the CDNs are
 in three forms — `images/favicon.ico`, `images/favicon.svg` and
 `images/apple-touch-icon.png` (swap in your own). Any `images/…` file referenced
 from an `<img>` or `<link>` is copied into the build.
+
+## Draft mode
+```
+<!--
+title: My new post title
+date: 08/09/2026
+lang: en
+description: One or two sentences for search results and social cards.
+draft: true
+-->
+```
+
+If `draft: true` is set in the header then the post becomes a draft, the draft post won't be published. By default draft mode is set to false.
 
 ## The index page
 

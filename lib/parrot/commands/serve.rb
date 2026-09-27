@@ -15,6 +15,7 @@ module Parrot
       CHECKSUM_FILE = ".checksum"
 
       attr_reader :config, :document_root, :app_root
+      
       def initialize(args=[], config)
         @config = config
         @args = args
@@ -50,6 +51,7 @@ module Parrot
         all_files = Dir.glob("**/*").select { |item| File.file?(item) && !item.start_with?("public/")}
         @cache = FileCache.instance
         builder = BuildCommand.new([], config)
+        builder.unset_build_mode!
 
         all_files.each do |file|
           absolute_path = File.join(app_root, file)

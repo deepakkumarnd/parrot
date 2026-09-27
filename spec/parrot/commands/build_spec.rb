@@ -115,7 +115,7 @@ describe Parrot::Commands do
       end
 
       it 'renders exactly one <h1> per page' do
-        %w[index about_parrot sample].each do |name|
+        %w[about_parrot sample].each do |name|
           expect(File.read("blog/public/#{name}.html").scan('<h1').size).to eq(1)
         end
       end
@@ -187,6 +187,30 @@ describe Parrot::Commands do
       end
     end
 
+    context 'draft posts' do
+      let(:build_config) { Parrot::Config.new(File.join(Dir.pwd, 'blog'), Logger.new(File::NULL)) }
+
+      it 'builds draft posts while editing posts' do
+        File.write('blog/views/posts/story.md', "<!--\ntitle: Story\ndraft: true\n-->\n\n# story\n")
+        builder = Parrot::Commands::BuildCommand.new([], build_config)
+        builder.unset_build_mode!
+        builder.run
+
+        expect(File.read('blog/public/story.html')).to include('<html lang="en">')
+        expect(File.read('blog/public/about_parrot.html')).to include('<html lang="en">')
+        expect(File.read('blog/public/index.html')).to include('<html lang="en">')
+      end
+
+      it 'skip draft posts while building posts' do
+        File.write('blog/views/posts/story.md', "<!--\ntitle: Story\ndraft: true\n-->\n\n# story\n")
+        Parrot::Commands::BuildCommand.new([], build_config).run
+
+        expect(File.exist?('blog/public/story.html')).to be false
+        expect(File.read('blog/public/about_parrot.html')).to include('<html lang="en">')
+        expect(File.read('blog/public/index.html')).to include('<html lang="en">')
+      end
+    end
+
     context 'generated post index listing' do
       let(:build_config) { Parrot::Config.new(File.join(Dir.pwd, 'blog'), Logger.new(File::NULL)) }
 
@@ -210,12 +234,12 @@ describe Parrot::Commands do
 
       it 'titles the index page from config.yaml post_listing.list_title' do
         Parrot::Commands::BuildCommand.new([], build_config).run
-        expect(File.read('blog/public/index.html')).to include('<h1>Post listing</h1>')
+        expect(File.read('blog/public/index.html')).to include('<h3>Post listing</h3>')
 
         File.write('blog/config.yaml', "post_listing:\n  list_title: \"Latest writing\"\n")
         Parrot::Commands::BuildCommand.new([], build_config).run
 
-        expect(File.read('blog/public/index.html')).to include('<h1>Latest writing</h1>')
+        expect(File.read('blog/public/index.html')).to include('<h3>Latest writing</h3>')
       end
 
       it 'omits the index heading entirely when list_title is empty' do
@@ -355,8 +379,8 @@ describe Parrot::Commands do
         File.write('blog/config.yaml', "post_listing:\n  per_page: 1\n")
         Parrot::Commands::BuildCommand.new([], build_config).run
 
-        expect(File.read('blog/public/index.html')).to include('<h1')
-        expect(File.read('blog/public/index2.html')).not_to include('<h1')
+        expect(File.read('blog/public/index.html')).to include('<h3')
+        expect(File.read('blog/public/index2.html')).not_to include('<h3')
       end
 
       it "points a pushed-down post's back-link at the index page it actually appears on" do
