@@ -34,33 +34,6 @@ module Parrot
         end
       end
 
-      # `{post_<key>}` expands to that key from the post's header (so
-      # `{post_title}`, `{post_lang}`, or any custom header field), as plain
-      # text; `{post_date}` is the same header field but run through
-      # `post_date_format.on_list` below rather than shown as-authored.
-      # `{post_link}` is the one field Parrot computes itself rather than
-      # reading from the header: the post's href. Wrap whichever span should
-      # be clickable in ordinary Markdown link syntax, [...]({post_link}).
-      # This default links just the title:
-      #   "{post_date} ~ [{post_title}]({post_link})"
-      # To make the whole line a link instead:
-      #   "[{post_date} ~ {post_title}]({post_link})"
-      # A bare strftime format string like {%d/%m/%Y} also still works here,
-      # shown exactly as formatted rather than through post_date_format.
-      DEFAULT_LIST_FORMAT = "{post_date} ~ [{post_title}]({post_link})"
-      DEFAULT_GROUP_BY = "none"
-      DEFAULT_LIST_TITLE = "Post listing"
-      DEFAULT_BACK_LINK_TEXT = "← Back to all posts"
-      DEFAULT_NEWER_LINK_TEXT = "← Newer posts"
-      DEFAULT_OLDER_LINK_TEXT = "Older posts →"
-
-      # `{post_date}` is the one header field with its own dedicated config,
-      # config.yaml's `post_date_format` — a Ruby strftime format string (see
-      # Date#strftime) per context: `on_list` when `{post_date}` appears in a
-      # post_listing `list_format`, `on_post` when it appears as a literal
-      # placeholder inside a post's own Markdown body.
-      DEFAULT_POST_DATE_FORMAT = { "on_list" => "%m/%Y", "on_post" => "%d/%m/%Y" }.freeze
-
       attr_accessor :app_root, :config, :build_path
 
       def initialize(args = [], config)
@@ -68,6 +41,15 @@ module Parrot
         @args = args
         @app_root = @config.root_dir
         @build_path = File.join(app_root, "public")
+        set_build_mode!
+      end
+
+      def unset_build_mode!
+        @config[:build_mode] = false
+      end
+
+      def set_build_mode!
+        @config[:build_mode] = true
       end
 
       # Builds index.html and, once there are more posts than post_listing's
@@ -136,12 +118,16 @@ module Parrot
       end
 
       def build_post(post_path, page_number = 1)
+        meta = post_metadata(post_path)
+        return if build_mode? && draft_post?(meta)
+
         layout = Tilt.new("#{app_root}/views/layout.html.erb")
 
-        meta = post_metadata(post_path)
+        
         meta["__date"] = parse_post_date(meta["date"])
 
         source = substitute_post_date(File.read(post_path), meta)
+        source = substitute_post_title(source, meta)
         body = markdown_string(source).render
         text = layout.render { body }
 
@@ -421,6 +407,15 @@ module Parrot
         end
       end
 
+      private def draft_post?(meta)
+        meta['draft'] == 'true'
+      end
+
+      private def build_mode?
+        @config[:build_mode]
+      end
+
+
       private
 
       # Reads the `<!-- key: value -->` comment header at the top of a post's
@@ -429,7 +424,7 @@ module Parrot
         header = File.read(post_path)[/\A\s*<!--(.+?)-->/m, 1]
         return {} unless header
 
-        header.each_line.each_with_object({}) do |line, meta|
+        meta = header.each_line.each_with_object({}) do |line, meta|
           key, sep, value = line.partition(":")
           next if sep.empty?
 
@@ -437,6 +432,9 @@ module Parrot
           value = value.strip
           meta[key] = value unless key.empty? || value.empty?
         end
+
+        meta['title']&.concat(" [Draft]") if draft_post?(meta)
+        meta
       end
 
       # Sets the per-page <html lang>, <title>, <meta property="og:*"> and
@@ -830,7 +828,7 @@ module Parrot
         settings = post_listing_settings
         return "" if settings.key?("list_title") && settings["list_title"].to_s.strip.empty?
 
-        "# #{settings["list_title"] || DEFAULT_LIST_TITLE}\n\n"
+        "### #{settings["list_title"] || DEFAULT_LIST_TITLE}\n\n"
       end
 
       # Every post's header metadata plus its parsed date and source filename,
@@ -900,6 +898,14 @@ module Parrot
           end
         end
       end
+
+      # Expands a literal "{post_title}" placeholder inside a post's own
+      def substitute_post_title(content, meta)
+        return content if meta['title'].nil?
+
+        content.gsub("{post_title}", meta['title'])
+      end
+
 
       # Expands a literal "{post_date}" placeholder inside a post's own
       # Markdown body (as opposed to a post_listing list_format), formatted

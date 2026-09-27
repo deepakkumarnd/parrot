@@ -40,7 +40,7 @@ describe Parrot::Commands do
 
       body = File.read(post_path)
       expect(body).to include("<!--\ntitle: My First Post!\ndate: #{Date.today.strftime('%d/%m/%Y')}\nlang: en\n-->")
-      expect(body).to include('# My First Post!')
+      expect(body).to include('# {post_title}')
       expect(body).to include('{post_date}')
     end
 

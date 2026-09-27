@@ -71,7 +71,7 @@ module Parrot
           lang: en
           -->
 
-          # #{title}
+          # {post_title}
 
           _{post_date}_
 
