@@ -135,6 +135,7 @@ module Parrot
         copy_image_assets(html)
         html = inject_scripts(html)
         html = inject_back_link(html, page_number)
+        html = inject_tags(html, post_tags(meta))
 
         output_name = File.basename(post_path).sub('.md', '.html')
         meta["description"] ||= summarize(body)
@@ -189,6 +190,30 @@ module Parrot
         paragraph.add_child(link)
 
         main.prepend_child(paragraph)
+        html
+      end
+
+      # Lists a post's header `tags` at the bottom of its <main>, each in its
+      # own <span class="tag">. Nothing is added for a post without tags.
+      def inject_tags(html, tags)
+        return html if tags.empty?
+
+        main = html.at("main")
+        return html unless main
+
+        paragraph = Nokogiri::XML::Node.new("p", html)
+        paragraph["class"] = "post-tags"
+        paragraph.add_child(Nokogiri::XML::Text.new("Tags: ", html))
+
+        tags.each_with_index do |tag, index|
+          paragraph.add_child(Nokogiri::XML::Text.new(" ", html)) if index.positive?
+          span = Nokogiri::XML::Node.new("span", html)
+          span["class"] = "tag"
+          span.content = tag
+          paragraph.add_child(span)
+        end
+
+        main.add_child(paragraph)
         html
       end
 
@@ -437,6 +462,12 @@ module Parrot
         meta
       end
 
+      # "algorithms, coding" -> ["algorithms", "coding"]: the header's
+      # comma-separated `tags`, trimmed, without blanks or duplicates.
+      def post_tags(meta)
+        meta["tags"].to_s.split(",").map(&:strip).reject(&:empty?).uniq
+      end
+
       # Sets the per-page <html lang>, <title>, <meta property="og:*"> and
       # <link rel="canonical"> on the built HTML, and turns a relative og:image
       # path into an absolute URL (copying the file into the build). The site's
@@ -528,6 +559,8 @@ module Parrot
             data["dateModified"] = published
           end
           data["description"] = description if description
+          tags = post_tags(meta)
+          data["keywords"] = tags.join(", ") unless tags.empty?
           image = meta_content(html, 'meta[property="og:image"]')
           data["image"] = image if image&.start_with?("http")
           author = meta_content(html, 'meta[name="author"]')
@@ -567,6 +600,13 @@ module Parrot
       def apply_article_meta(html, meta)
         og_type = html.at('head meta[property="og:type"]')
         og_type["content"] = "article" if og_type
+
+        post_tags(meta).each do |tag|
+          node = Nokogiri::XML::Node.new("meta", html)
+          node["property"] = "article:tag"
+          node["content"] = tag
+          (html.at("head") || html).add_child(node)
+        end
 
         published = iso_date(meta["date"])
         return unless published

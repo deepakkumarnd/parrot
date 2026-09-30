@@ -211,6 +211,46 @@ describe Parrot::Commands do
       end
     end
 
+    context 'post tags' do
+      let(:build_config) { Parrot::Config.new(File.join(Dir.pwd, 'blog'), Logger.new(File::NULL)) }
+
+      def build_story(header)
+        File.write('blog/views/posts/story.md', "<!--\ntitle: Story\ndate: 01/01/2012\n#{header}-->\n\n# story\n\nSome text.\n")
+        Parrot::Commands::BuildCommand.new([], build_config).run
+        Nokogiri::HTML(File.read('blog/public/story.html'))
+      end
+
+      it 'lists the header tags at the bottom of the post' do
+        html = build_story("tags: algorithms, coding\n")
+
+        last = html.at('main').element_children.last
+        expect(last.name).to eq('p')
+        expect(last['class']).to eq('post-tags')
+        expect(last.css('span.tag').map(&:text)).to eq(%w[algorithms coding])
+      end
+
+      it 'trims tags and drops blanks and duplicates' do
+        html = build_story("tags: a, , b ,a\n")
+
+        expect(html.css('.post-tags span.tag').map(&:text)).to eq(%w[a b])
+      end
+
+      it 'adds nothing to posts without tags or to the index' do
+        html = build_story("")
+
+        expect(html.at('.post-tags')).to be_nil
+        expect(File.read('blog/public/index.html')).not_to include('post-tags')
+      end
+
+      it 'emits article:tag metas and JSON-LD keywords' do
+        html = build_story("tags: algorithms, coding\n")
+
+        expect(html.css('head meta[property="article:tag"]').map { |m| m['content'] }).to eq(%w[algorithms coding])
+        json = JSON.parse(html.at('script[type="application/ld+json"]').text)
+        expect(json['keywords']).to eq('algorithms, coding')
+      end
+    end
+
     context 'generated post index listing' do
       let(:build_config) { Parrot::Config.new(File.join(Dir.pwd, 'blog'), Logger.new(File::NULL)) }
 
