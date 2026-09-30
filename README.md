@@ -263,17 +263,23 @@ sitemap and feed) for hosts that serve it on a missing path.
 ## Development
 
 ```
-$ ./bin/setup                 # install dependencies and install githooks
-$ rspec                       # run the test suite
-$ rspec -f d                  # documentation format
+$ ./bin/setup                 # install gems and the git hooks
+$ bundle exec rspec           # run the test suite
+$ bundle exec rspec -f d      # documentation format
 $ bundle exec rubocop         # lint (config in .rubocop.yml)
+$ bundle exec rubocop -a      # autocorrect safe offenses
 ```
 
-GitHub Actions (`.github/workflows/ci.yml`) runs RSpec and RuboCop on every pull
-request and on pushes to `master`.
+`bin/setup` runs `bundle install` and then points git at the versioned hooks
+in `.githooks/` (`git config core.hooksPath .githooks`). Run it once after
+cloning. From then on the `pre-commit` hook runs RuboCop and RSpec, and aborts
+the commit if either fails.
 
 Run the suite from a directory that has no `blog/` folder — some specs create
 and delete `./blog`.
+
+GitHub Actions (`.github/workflows/ci.yml`) runs RSpec and RuboCop on every pull
+request and on pushes to `master`.
 
 ## Contributing
 

@@ -1,4 +1,11 @@
 #!/usr/bin/env ruby
 
-system('bundle install')
-system('git config core.hooksPath .githooks')
+def run(command)
+  puts "== #{command}"
+  system(command) || abort("Setup failed: #{command}")
+end
+
+run('bundle install')
+# Point git at the versioned hooks in .githooks (pre-commit runs RuboCop and RSpec).
+run('git config core.hooksPath .githooks')
+puts 'Setup complete.'
