@@ -128,7 +128,7 @@ the top of its `<main>`, pointing at `index.html`; style it with the
 ## Post header
 
 Each post starts with an HTML comment holding its metadata. `parrot post` writes
-`title`, `date` and `lang`; `description` is one you can add by hand:
+`title`, `date` and `lang`; `description` and `tags` are ones you can add by hand:
 
 ```
 <!--
@@ -136,6 +136,7 @@ title: My new post title
 date: 08/09/2026
 lang: en
 description: One or two sentences for search results and social cards.
+tags: algorithms, coding
 -->
 ```
 
@@ -144,7 +145,12 @@ description: One or two sentences for search results and social cards.
 …) when a post is in another language, which also feeds `og:locale`.
 `description` is optional: it fills `<meta name="description">`, `og:description`
 and `twitter:description`, and Parrot falls back to the post's first paragraph
-when it's absent. Set your site's URL once in `views/layout.html.erb` — the
+when it's absent. `tags` is an optional comma-separated list: when present,
+the tags are listed at the bottom of the post as
+`<p class="post-tags">Tags: <span class="tag">algorithms</span> …</p>` (style it
+with `.post-tags` / `.tag`), and emitted as `article:tag` meta tags and the
+JSON-LD `keywords`. `{post_tags}` in `list_format` shows them on the index as
+written. Set your site's URL once in `views/layout.html.erb` — the
 `<meta property="og:url">` and `<link rel="canonical">` tags — and Parrot
 rewrites both per page, appending the built file's path
 (`https://example.com/post1.html`, `https://example.com/` for the index).

@@ -36,6 +36,19 @@
   }
 }
 
+.post-tags {
+  margin-top: 2rem;
+  font-size: 0.9rem;
+  color: var(--text-light);
+
+  .tag {
+    display: inline-block;
+    padding: 0.1rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+  }
+}
+
 .pagination {
   display: flex;
   justify-content: space-between;
