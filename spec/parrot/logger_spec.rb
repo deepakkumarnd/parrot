@@ -1,7 +1,6 @@
 require 'spec_helper'
 
 describe Parrot::ParrotLoggerBuilder do
-
   let(:parrot_logger) { Parrot::ParrotLoggerBuilder.new(false) }
 
   it 'is an instance of Logger' do
@@ -13,8 +12,8 @@ describe Parrot::ParrotLoggerBuilder do
   end
 
   it 'logs a message to stdout by default' do
-    expect(parrot_logger).to receive(:log).with("Hello parrot")
-    parrot_logger.log("Hello parrot")
+    expect(parrot_logger).to receive(:log).with('Hello parrot')
+    parrot_logger.log('Hello parrot')
   end
 
   it 'sets the instance variable @logger' do
@@ -27,14 +26,14 @@ describe Parrot::ParrotLoggerBuilder do
 
   it 'sets the log device as STDOUT by default' do
     allow(Parrot::Helpers).to receive(:testing?).and_return(false)
-    expect(parrot_logger.device).to eq(STDOUT)
+    expect(parrot_logger.device).to eq($stdout)
   end
 
   it 'In test mode the device will be set to a test log file' do
-    expect(File.basename(parrot_logger.device.path)).to eq("parrot.test.log")
+    expect(File.basename(parrot_logger.device.path)).to eq('parrot.test.log')
   end
 
   it 'sets the log device as a file if the quiet mode is turned on' do
-    expect(Parrot::ParrotLoggerBuilder.new(quiet = true).device).to be_a File
+    expect(Parrot::ParrotLoggerBuilder.new(true).device).to be_a File
   end
 end

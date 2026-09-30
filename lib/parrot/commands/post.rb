@@ -2,42 +2,38 @@ require 'date'
 require 'optparse'
 
 module Parrot
-
   module Commands
-
     # Post command scaffolds a new Markdown post. The index page's listing is
     # generated at build time from every file in views/posts, so nothing here
     # needs to link it in.
     # @usage parrot post --title "My first post"
     # Runs from the blog's root, like `build` and `serve`.
     class PostCommand
-
-      USAGE = 'Usage: parrot post --title "My new post"'
+      USAGE = 'Usage: parrot post --title "My new post"'.freeze
 
       attr_reader :config, :app_root, :title, :slug
 
       def initialize(args = [], config)
         @config = config
         @title = extract_title(Array(args)).strip
-        @app_root = @config && @config.root_dir
+        @app_root = @config&.root_dir
         raise ArgumentError, USAGE if @title.empty?
         raise ArgumentError if @app_root.nil?
+
         @slug = slugify(@title)
       end
 
       def run
         raise ArgumentError, "Title has no letters or digits to build a filename from.\n#{USAGE}" if slug.empty?
 
-        posts_dir = File.join(app_root, "views", "posts")
+        posts_dir = File.join(app_root, 'views', 'posts')
 
-        unless Dir.exist?(posts_dir)
-          raise "Run this from the blog's root (no views/posts found)"
-        end
+        raise "Run this from the blog's root (no views/posts found)" unless Dir.exist?(posts_dir)
 
         post_path = File.join(posts_dir, "#{slug}.md")
         raise "Post #{post_path} already exists" if File.exist?(post_path)
 
-        File.write(post_path, post_template(Date.today.strftime("%d/%m/%Y")))
+        File.write(post_path, post_template(Date.today.strftime('%d/%m/%Y')))
         config.logger.info "Created #{post_path}"
       end
 

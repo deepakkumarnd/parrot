@@ -1,4 +1,4 @@
 module Parrot
-  VERSION = '0.2.4'
-  HOMEPAGE = 'https://github.com/deepakkumarnd/parrot'
+  VERSION = '0.2.4'.freeze
+  HOMEPAGE = 'https://github.com/deepakkumarnd/parrot'.freeze
 end

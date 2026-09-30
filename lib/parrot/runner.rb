@@ -5,14 +5,12 @@ require_relative 'commands/serve'
 require_relative 'commands/post'
 
 module Parrot
-
   class Runner
-
     include Commands
 
     attr_reader :command
 
-    def initialize(command, args=[], config)
+    def initialize(command, args = [], config)
       @config = config
       klass = to_command_class(command)
       @command = klass.new(args, @config)

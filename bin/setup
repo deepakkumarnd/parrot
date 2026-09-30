@@ -1,4 +1,4 @@
 #!/usr/bin/env ruby
 
-system("bundle install")
-system("git config core.hooksPath .githooks")
+system('bundle install')
+system('git config core.hooksPath .githooks')

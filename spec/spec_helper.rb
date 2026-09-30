@@ -2,6 +2,6 @@ require 'pry'
 require 'debug'
 require_relative '../lib/parrot'
 
-ENV['PARROT_TESTING'] = "true"
+ENV['PARROT_TESTING'] = 'true'
 
 TestLogger = Parrot::ParrotLoggerBuilder.new(false).logger

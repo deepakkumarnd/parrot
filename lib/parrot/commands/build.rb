@@ -10,14 +10,11 @@ require 'kramdown-parser-gfm'
 require 'rouge'
 
 module Parrot
-
   module Commands
-
     # Build command builds the HTML static app
     # @usage  parrot build
     # The build files will be kept in the build directory
     class BuildCommand
-
       # Wraps rouge's class-tagged <span> output in <pre><code>, same markup
       # kramdown's default (deprecated) HTMLLegacy formatter produced.
       class CodeFormatter < Rouge::Formatters::HTML
@@ -27,7 +24,7 @@ module Parrot
           @css_class = opts.fetch(:css_class, 'highlight')
         end
 
-        def stream(tokens, &block)
+        def stream(tokens, &)
           yield %(<div class="highlight"><pre class="#{@css_class}"><code>) if @wrap
           super
           yield '</code></pre></div>' if @wrap
@@ -40,7 +37,7 @@ module Parrot
         @config = config
         @args = args
         @app_root = @config.root_dir
-        @build_path = File.join(app_root, "public")
+        @build_path = File.join(app_root, 'public')
         set_build_mode!
       end
 
@@ -97,22 +94,22 @@ module Parrot
       # Builds public/404.html from views/404.md for hosts that serve it on a
       # missing path. Marked noindex; not listed in the sitemap or feed.
       def build_404_page
-        source = File.join(app_root, "views", "404.md")
+        source = File.join(app_root, 'views', '404.md')
         return unless File.exist?(source)
 
         layout = Tilt.new("#{app_root}/views/layout.html.erb")
         html = update_internal_links(layout.render { markdown(source).render })
         copy_image_assets(html)
 
-        title = html.at("head title")
-        title.content = "Page not found" if title
+        title = html.at('head title')
+        title.content = 'Page not found' if title
 
-        robots = Nokogiri::XML::Node.new("meta", html)
-        robots["name"] = "robots"
-        robots["content"] = "noindex"
-        (html.at("head") || html).add_child(robots)
+        robots = Nokogiri::XML::Node.new('meta', html)
+        robots['name'] = 'robots'
+        robots['content'] = 'noindex'
+        (html.at('head') || html).add_child(robots)
 
-        output = File.join(build_path, "404.html")
+        output = File.join(build_path, '404.html')
         File.write(output, html)
         config.logger.info "Built #{output}"
       end
@@ -123,8 +120,7 @@ module Parrot
 
         layout = Tilt.new("#{app_root}/views/layout.html.erb")
 
-        
-        meta["__date"] = parse_post_date(meta["date"])
+        meta['__date'] = parse_post_date(meta['date'])
 
         source = substitute_post_date(File.read(post_path), meta)
         source = substitute_post_title(source, meta)
@@ -138,7 +134,7 @@ module Parrot
         html = inject_tags(html, post_tags(meta))
 
         output_name = File.basename(post_path).sub('.md', '.html')
-        meta["description"] ||= summarize(body)
+        meta['description'] ||= summarize(body)
         apply_page_meta(html, output_name, meta)
 
         output = File.join(build_path, output_name)
@@ -149,20 +145,18 @@ module Parrot
       def update_internal_links(text)
         html = Nokogiri::HTML(text)
 
-        html.css("a").each do |link|
-          if link['href'].start_with?("#") && link['href'].end_with?(".md")
-            link['href'] = link['href'][1..].sub('.md', '.html')
-          end
+        html.css('a').each do |link|
+          link['href'] = link['href'][1..].sub('.md', '.html') if link['href'].start_with?('#') && link['href'].end_with?('.md')
         end
 
         html
       end
 
       def inject_scripts(html)
-        script_tag = Nokogiri::XML::Node.new("script", html)
+        script_tag = Nokogiri::XML::Node.new('script', html)
         script_tag['src'] = MATHJAX_URL
         script_tag['async'] = 'true' # optional attribute
-        script_tag.content = "" # Needed to close the tag properly
+        script_tag.content = '' # Needed to close the tag properly
         # Append the <script> tag to the <body>
         html.at('body') << script_tag
         html
@@ -176,17 +170,17 @@ module Parrot
       # that's explicitly set to an empty string.
       def inject_back_link(html, page_number = 1)
         settings = post_listing_settings
-        return html if settings.key?("back_link_text") && settings["back_link_text"].to_s.strip.empty?
+        return html if settings.key?('back_link_text') && settings['back_link_text'].to_s.strip.empty?
 
-        main = html.at("main")
+        main = html.at('main')
         return html unless main
 
-        link = Nokogiri::XML::Node.new("a", html)
-        link["href"] = index_filename(page_number)
-        link.content = settings["back_link_text"] || DEFAULT_BACK_LINK_TEXT
+        link = Nokogiri::XML::Node.new('a', html)
+        link['href'] = index_filename(page_number)
+        link.content = settings['back_link_text'] || DEFAULT_BACK_LINK_TEXT
 
-        paragraph = Nokogiri::XML::Node.new("p", html)
-        paragraph["class"] = "back-link"
+        paragraph = Nokogiri::XML::Node.new('p', html)
+        paragraph['class'] = 'back-link'
         paragraph.add_child(link)
 
         main.prepend_child(paragraph)
@@ -198,17 +192,17 @@ module Parrot
       def inject_tags(html, tags)
         return html if tags.empty?
 
-        main = html.at("main")
+        main = html.at('main')
         return html unless main
 
-        paragraph = Nokogiri::XML::Node.new("p", html)
-        paragraph["class"] = "post-tags"
-        paragraph.add_child(Nokogiri::XML::Text.new("Tags: ", html))
+        paragraph = Nokogiri::XML::Node.new('p', html)
+        paragraph['class'] = 'post-tags'
+        paragraph.add_child(Nokogiri::XML::Text.new('Tags: ', html))
 
         tags.each_with_index do |tag, index|
-          paragraph.add_child(Nokogiri::XML::Text.new(" ", html)) if index.positive?
-          span = Nokogiri::XML::Node.new("span", html)
-          span["class"] = "tag"
+          paragraph.add_child(Nokogiri::XML::Text.new(' ', html)) if index.positive?
+          span = Nokogiri::XML::Node.new('span', html)
+          span['class'] = 'tag'
           span.content = tag
           paragraph.add_child(span)
         end
@@ -218,28 +212,26 @@ module Parrot
       end
 
       def copy_image_assets(html)
-        html.css("img, link").each do |node|
+        html.css('img, link').each do |node|
           # <img> carries the path in src, <link> (icons, favicons) in href.
-          src = node["src"] || node["href"]
+          src = node['src'] || node['href']
           next if src.nil?
 
           source_path = File.join(app_root, src)
 
-          if src.start_with?("images/") && File.exist?(source_path)
-            copy_image(source_path)
-          end
+          copy_image(source_path) if src.start_with?('images/') && File.exist?(source_path)
         end
       end
 
       def copy_image(source_path)
-        target_dir = File.join(build_path, "images")
+        target_dir = File.join(build_path, 'images')
         FileUtils.mkdir_p(target_dir)
         FileUtils.cp(source_path, target_dir)
         config.logger.info "Copied #{File.basename(source_path)} to #{target_dir}"
       end
 
       def compile_css
-        css_files = Dir[File.join(app_root, "css", '**', '*.{scss,css}')]
+        css_files = Dir[File.join(app_root, 'css', '**', '*.{scss,css}')]
         combined_scss = css_files.map { |file| File.read(file) }.join("\n")
 
         user_css =
@@ -247,23 +239,23 @@ module Parrot
             SassC::Engine.new(combined_scss, style: :compressed, syntax: :scss).render
           rescue SassC::SyntaxError => e
             puts "SassC Compilation Error: #{e.message}"
-            ""
+            ''
           end
 
         # The syntax-highlight theme must always ship, even when the user's
         # own stylesheet is empty or fails to compile.
         compiled_css = "#{user_css}\n#{syntax_highlight_css}"
 
-        target_path = File.join(build_path, "app.css")
+        target_path = File.join(build_path, 'app.css')
         File.write(target_path, compiled_css)
         config.logger.info "Compiled and minified CSS written to #{target_path}"
       end
 
       def compile_js
-        FileUtils.cp(File.join(app_root, "javascripts", "app.js"), File.join(build_path))
+        FileUtils.cp(File.join(app_root, 'javascripts', 'app.js'), File.join(build_path))
         config.logger.info "Copied app.js to #{build_path}"
       end
-      
+
       def run
         config.logger.info "Building application at #{app_root}"
         FileUtils.rm_rf('public')
@@ -285,12 +277,12 @@ module Parrot
       def build_sitemap
         base = site_base_url
         unless base
-          config.logger.warn "No og:url/canonical in the layout, skipping sitemap.xml"
+          config.logger.warn 'No og:url/canonical in the layout, skipping sitemap.xml'
           return
         end
 
-        posts = Dir["#{app_root}/views/posts/*.md"].sort
-        post_dates = posts.map { |post_path| iso_date(post_metadata(post_path)["date"]) }.compact
+        posts = Dir["#{app_root}/views/posts/*.md"]
+        post_dates = posts.map { |post_path| iso_date(post_metadata(post_path)['date']) }.compact
         newest = post_dates.max
 
         total_pages = paginated_posts(sorted_posts_metadata).length
@@ -300,8 +292,8 @@ module Parrot
         end
 
         posts.each do |post_path|
-          name = File.basename(post_path).sub(".md", ".html")
-          entries << { loc: "#{base}/#{name}", lastmod: iso_date(post_metadata(post_path)["date"]) }
+          name = File.basename(post_path).sub('.md', '.html')
+          entries << { loc: "#{base}/#{name}", lastmod: iso_date(post_metadata(post_path)['date']) }
         end
 
         xml = +%(<?xml version="1.0" encoding="UTF-8"?>\n)
@@ -313,7 +305,7 @@ module Parrot
         end
         xml << "</urlset>\n"
 
-        output = File.join(build_path, "sitemap.xml")
+        output = File.join(build_path, 'sitemap.xml')
         File.write(output, xml)
         config.logger.info "Built #{output}"
       end
@@ -322,11 +314,11 @@ module Parrot
       # the sitemap (when the layout gives us a base URL to build its address).
       def build_robots
         base = site_base_url
-        lines = ["User-agent: *", "Allow: /"]
+        lines = ['User-agent: *', 'Allow: /']
         lines << "Sitemap: #{base}/sitemap.xml" if base
 
-        output = File.join(build_path, "robots.txt")
-        File.write(output, lines.join("\n") + "\n")
+        output = File.join(build_path, 'robots.txt')
+        File.write(output, "#{lines.join("\n")}\n")
         config.logger.info "Built #{output}"
       end
 
@@ -336,26 +328,26 @@ module Parrot
       def build_feed
         base = site_base_url
         unless base
-          config.logger.info "No og:url/canonical in the layout, skipping feed.xml"
+          config.logger.info 'No og:url/canonical in the layout, skipping feed.xml'
           return
         end
 
-        layout_html = Nokogiri::HTML(Tilt.new("#{app_root}/views/layout.html.erb").render { "" })
-        channel_title = meta_content(layout_html, 'meta[property="og:site_name"]') || "Parrot"
-        channel_desc = meta_content(layout_html, 'meta[name="description"]') || ""
+        layout_html = Nokogiri::HTML(Tilt.new("#{app_root}/views/layout.html.erb").render { '' })
+        channel_title = meta_content(layout_html, 'meta[property="og:site_name"]') || 'Parrot'
+        channel_desc = meta_content(layout_html, 'meta[name="description"]') || ''
 
         items = Dir["#{app_root}/views/posts/*.md"].map do |post_path|
           meta = post_metadata(post_path)
           url = "#{base}/#{File.basename(post_path).sub('.md', '.html')}"
           {
-            title: meta["title"] || File.basename(post_path, ".md"),
+            title: meta['title'] || File.basename(post_path, '.md'),
             url: url,
-            description: meta["description"] || summarize(markdown(post_path).render) || "",
-            iso: iso_date(meta["date"]),
-            pub_date: rfc822_date(meta["date"])
+            description: meta['description'] || summarize(markdown(post_path).render) || '',
+            iso: iso_date(meta['date']),
+            pub_date: rfc822_date(meta['date'])
           }
         end
-        items.sort_by! { |item| item[:iso] || "" }
+        items.sort_by! { |item| item[:iso] || '' }
         items.reverse!
 
         xml = +%(<?xml version="1.0" encoding="UTF-8"?>\n)
@@ -376,7 +368,7 @@ module Parrot
         end
         xml << "  </channel>\n</rss>\n"
 
-        output = File.join(build_path, "feed.xml")
+        output = File.join(build_path, 'feed.xml')
         File.write(output, xml)
         config.logger.info "Built #{output}"
       end
@@ -389,12 +381,12 @@ module Parrot
       def build(file)
         config.logger.info "Building changed file at #{file}"
         path = File.expand_path(file.to_s, app_root)
-        relative = path.sub(%r{\A#{Regexp.escape(app_root)}/?}, "")
+        relative = path.sub(%r{\A#{Regexp.escape(app_root)}/?}, '')
 
         FileUtils.mkdir_p(build_path)
 
         case relative
-        when "views/layout.html.erb"
+        when 'views/layout.html.erb'
           # The layout wraps every page, so everything is rebuilt. Its base URL
           # feeds the sitemap, robots.txt and feed too.
           build_index_page
@@ -403,9 +395,9 @@ module Parrot
           build_sitemap
           build_robots
           build_feed
-        when "views/404.md"
+        when 'views/404.md'
           build_404_page
-        when "config.yaml"
+        when 'config.yaml'
           # post_listing settings change the index; post_date_format also
           # affects the {post_date} placeholder inside every post's own body.
           build_index_page
@@ -423,7 +415,7 @@ module Parrot
         when %r{\Acss/.+\.(scss|css)\z}
           # css is concatenated before compiling, so a single change recompiles all.
           compile_css
-        when "javascripts/app.js"
+        when 'javascripts/app.js'
           compile_js
         when %r{\Aimages/[^/]+\z}
           copy_image(path) if File.exist?(path)
@@ -432,16 +424,15 @@ module Parrot
         end
       end
 
-      private def draft_post?(meta)
+      private
+
+      def draft_post?(meta)
         meta['draft'] == 'true'
       end
 
-      private def build_mode?
+      def build_mode?
         @config[:build_mode]
       end
-
-
-      private
 
       # Reads the `<!-- key: value -->` comment header at the top of a post's
       # Markdown file into a Hash. Returns {} when the file has no such header.
@@ -449,8 +440,8 @@ module Parrot
         header = File.read(post_path)[/\A\s*<!--(.+?)-->/m, 1]
         return {} unless header
 
-        meta = header.each_line.each_with_object({}) do |line, meta|
-          key, sep, value = line.partition(":")
+        meta = header.each_line.with_object({}) do |line, meta|
+          key, sep, value = line.partition(':')
           next if sep.empty?
 
           key = key.strip
@@ -458,14 +449,14 @@ module Parrot
           meta[key] = value unless key.empty? || value.empty?
         end
 
-        meta['title']&.concat(" [Draft]") if draft_post?(meta)
+        meta['title']&.concat(' [Draft]') if draft_post?(meta)
         meta
       end
 
       # "algorithms, coding" -> ["algorithms", "coding"]: the header's
       # comma-separated `tags`, trimmed, without blanks or duplicates.
       def post_tags(meta)
-        meta["tags"].to_s.split(",").map(&:strip).reject(&:empty?).uniq
+        meta['tags'].to_s.split(',').map(&:strip).reject(&:empty?).uniq
       end
 
       # Sets the per-page <html lang>, <title>, <meta property="og:*"> and
@@ -475,43 +466,43 @@ module Parrot
       # file's path is appended so each page points at itself. `meta` is the
       # post's header Hash (empty for the index).
       def apply_page_meta(html, output_name, meta = {})
-        title = meta["title"]
+        title = meta['title']
         is_post = !index_page?(output_name)
 
         if title && !title.empty?
-          title_tag = html.at("head title")
+          title_tag = html.at('head title')
           title_tag.content = title if title_tag
         end
 
-        lang = meta["lang"]
+        lang = meta['lang']
         if lang && !lang.empty?
-          root = html.at("html")
-          root["lang"] = lang if root
+          root = html.at('html')
+          root['lang'] = lang if root
         end
 
         base = canonical_base(html)
         return unless base
 
-        page_url = output_name == "index.html" ? "#{base}/" : "#{base}/#{output_name}"
+        page_url = output_name == 'index.html' ? "#{base}/" : "#{base}/#{output_name}"
 
         og = html.at('head meta[property="og:url"]')
-        og["content"] = page_url if og
+        og['content'] = page_url if og
 
         canonical = html.at('head link[rel="canonical"]')
-        canonical["href"] = page_url if canonical
+        canonical['href'] = page_url if canonical
 
-        page_title = html.at("head title")&.text
+        page_title = html.at('head title')&.text
         og_title = html.at('head meta[property="og:title"]')
-        og_title["content"] = page_title if og_title && page_title && !page_title.empty?
+        og_title['content'] = page_title if og_title && page_title && !page_title.empty?
 
-        apply_description(html, meta["description"])
-        apply_locale(html, meta["lang"])
+        apply_description(html, meta['description'])
+        apply_locale(html, meta['lang'])
         apply_article_meta(html, meta) if is_post
 
         resolve_og_image(html, base)
 
         feed = html.at('head link[rel="alternate"][type="application/rss+xml"]')
-        feed["href"] = "#{base}/feed.xml" if feed && !feed["href"].to_s.start_with?("http")
+        feed['href'] = "#{base}/feed.xml" if feed && !feed['href'].to_s.start_with?('http')
 
         inject_json_ld(html, is_post, meta, page_url)
       end
@@ -525,7 +516,7 @@ module Parrot
          'meta[property="og:description"]',
          'meta[name="twitter:description"]'].each do |selector|
           node = html.at("head #{selector}")
-          node["content"] = description if node
+          node['content'] = description if node
         end
       end
 
@@ -534,8 +525,8 @@ module Parrot
         node = html.at('head meta[property="og:locale"]')
         return unless node && lang && !lang.empty?
 
-        locales = { "en" => "en_US", "ml" => "ml_IN", "hi" => "hi_IN", "ta" => "ta_IN" }
-        node["content"] = locales.fetch(lang, lang)
+        locales = { 'en' => 'en_US', 'ml' => 'ml_IN', 'hi' => 'hi_IN', 'ta' => 'ta_IN' }
+        node['content'] = locales.fetch(lang, lang)
       end
 
       # Adds a schema.org JSON-LD block: BlogPosting for a post, WebSite for the
@@ -545,34 +536,34 @@ module Parrot
         description = meta_content(html, 'meta[name="description"]')
 
         data = {
-          "@context" => "https://schema.org",
-          "@type" => is_post ? "BlogPosting" : "WebSite",
-          "url" => page_url
+          '@context' => 'https://schema.org',
+          '@type' => is_post ? 'BlogPosting' : 'WebSite',
+          'url' => page_url
         }
 
         if is_post
-          data["headline"] = html.at("head title")&.text || meta["title"]
-          data["mainEntityOfPage"] = page_url
-          data["inLanguage"] = meta["lang"] || "en"
-          if (published = iso_date(meta["date"]))
-            data["datePublished"] = published
-            data["dateModified"] = published
+          data['headline'] = html.at('head title')&.text || meta['title']
+          data['mainEntityOfPage'] = page_url
+          data['inLanguage'] = meta['lang'] || 'en'
+          if (published = iso_date(meta['date']))
+            data['datePublished'] = published
+            data['dateModified'] = published
           end
-          data["description"] = description if description
+          data['description'] = description if description
           tags = post_tags(meta)
-          data["keywords"] = tags.join(", ") unless tags.empty?
+          data['keywords'] = tags.join(', ') unless tags.empty?
           image = meta_content(html, 'meta[property="og:image"]')
-          data["image"] = image if image&.start_with?("http")
+          data['image'] = image if image&.start_with?('http')
           author = meta_content(html, 'meta[name="author"]')
-          data["author"] = { "@type" => "Person", "name" => author } if author
-          data["publisher"] = { "@type" => "Organization", "name" => site_name } if site_name
+          data['author'] = { '@type' => 'Person', 'name' => author } if author
+          data['publisher'] = { '@type' => 'Organization', 'name' => site_name } if site_name
         else
-          data["name"] = site_name || html.at("head title")&.text
-          data["description"] = description if description
+          data['name'] = site_name || html.at('head title')&.text
+          data['description'] = description if description
         end
 
-        json = JSON.pretty_generate(data).gsub("</", "<\\/")
-        (html.at("head") || html).add_child(%(<script type="application/ld+json">#{json}</script>))
+        json = JSON.pretty_generate(data).gsub('</', '<\\/')
+        (html.at('head') || html).add_child(%(<script type="application/ld+json">#{json}</script>))
       end
 
       # A description drawn from the post body: the first paragraph with at least
@@ -581,9 +572,9 @@ module Parrot
       # word boundary. nil when nothing qualifies.
       def summarize(fragment, limit = 155, minimum = 40)
         para = Nokogiri::HTML(fragment.to_s)
-                 .css("p")
-                 .map { |node| node.text.gsub(/\s+/, " ").strip }
-                 .find { |text| text.length >= minimum }
+                       .css('p')
+                       .map { |node| node.text.gsub(/\s+/, ' ').strip }
+                       .find { |text| text.length >= minimum }
         return unless para
         return para if para.length <= limit
 
@@ -591,7 +582,7 @@ module Parrot
       end
 
       def meta_content(html, selector)
-        value = html.at("head #{selector}")&.[]("content")
+        value = html.at("head #{selector}")&.[]('content')
         value unless value.nil? || value.empty?
       end
 
@@ -599,27 +590,27 @@ module Parrot
       # the header's dd/mm/yyyy `date`) as article:published_time in ISO form.
       def apply_article_meta(html, meta)
         og_type = html.at('head meta[property="og:type"]')
-        og_type["content"] = "article" if og_type
+        og_type['content'] = 'article' if og_type
 
         post_tags(meta).each do |tag|
-          node = Nokogiri::XML::Node.new("meta", html)
-          node["property"] = "article:tag"
-          node["content"] = tag
-          (html.at("head") || html).add_child(node)
+          node = Nokogiri::XML::Node.new('meta', html)
+          node['property'] = 'article:tag'
+          node['content'] = tag
+          (html.at('head') || html).add_child(node)
         end
 
-        published = iso_date(meta["date"])
+        published = iso_date(meta['date'])
         return unless published
 
-        node = Nokogiri::XML::Node.new("meta", html)
-        node["property"] = "article:published_time"
-        node["content"] = published
-        (html.at("head") || html).add_child(node)
+        node = Nokogiri::XML::Node.new('meta', html)
+        node['property'] = 'article:published_time'
+        node['content'] = published
+        (html.at('head') || html).add_child(node)
       end
 
       # "31/12/2026" -> Date.new(2026, 12, 31); nil for a blank or invalid value.
       def parse_post_date(value)
-        day, month, year = value.to_s.strip.split("/")
+        day, month, year = value.to_s.strip.split('/')
         return unless day && month && year
 
         Date.new(year.to_i, month.to_i, day.to_i)
@@ -647,43 +638,43 @@ module Parrot
       # out without fetching the file first.
       def resolve_og_image(html, base)
         og_image = html.at('head meta[property="og:image"]')
-        src = og_image && og_image["content"]
-        return if src.nil? || src.empty? || src.start_with?("http://", "https://", "//")
+        src = og_image && og_image['content']
+        return if src.nil? || src.empty? || src.start_with?('http://', 'https://', '//')
 
         source_path = File.join(app_root, src)
-        if src.start_with?("images/") && File.exist?(source_path)
+        if src.start_with?('images/') && File.exist?(source_path)
           copy_image(source_path)
 
           if (dimensions = image_dimensions(source_path))
-            set_head_meta(html, "og:image:width", dimensions[0].to_s)
-            set_head_meta(html, "og:image:height", dimensions[1].to_s)
+            set_head_meta(html, 'og:image:width', dimensions[0].to_s)
+            set_head_meta(html, 'og:image:height', dimensions[1].to_s)
           end
         end
 
-        og_image["content"] = "#{base}/#{src}"
+        og_image['content'] = "#{base}/#{src}"
       end
 
       # Sets <meta property="…">, adding the tag to <head> if it isn't there.
       def set_head_meta(html, property, content)
         node = html.at(%(head meta[property="#{property}"]))
         unless node
-          node = Nokogiri::XML::Node.new("meta", html)
-          node["property"] = property
-          (html.at("head") || html).add_child(node)
+          node = Nokogiri::XML::Node.new('meta', html)
+          node['property'] = property
+          (html.at('head') || html).add_child(node)
         end
-        node["content"] = content
+        node['content'] = content # rubocop:disable Lint/UselessSetterCall -- node lives in the document
       end
 
       # [width, height] of a PNG, JPEG or GIF, read from the file header only.
       # nil for anything else or an unreadable file.
       def image_dimensions(path)
-        File.open(path, "rb") do |io|
+        File.open(path, 'rb') do |io|
           head = io.read(24) or return nil
 
           if head.byteslice(0, 8) == "\x89PNG\r\n\x1a\n".b
-            head.byteslice(16, 8).unpack("N2")
-          elsif head.byteslice(0, 3) == "GIF".b
-            head.byteslice(6, 4).unpack("v2")
+            head.byteslice(16, 8).unpack('N2')
+          elsif head.byteslice(0, 3) == 'GIF'.b
+            head.byteslice(6, 4).unpack('v2')
           elsif head.byteslice(0, 2) == "\xFF\xD8".b
             jpeg_dimensions(io)
           end
@@ -705,14 +696,14 @@ module Parrot
           return nil if marker.nil?
 
           # Standalone markers (RSTn, SOI, EOI, TEM) carry no length.
-          next if marker == 0x01 || (marker >= 0xD0 && marker <= 0xD9)
+          next if marker == 0x01 || marker.between?(0xD0, 0xD9)
 
-          length = io.read(2)&.unpack1("n")
+          length = io.read(2)&.unpack1('n')
           return nil if length.nil?
 
-          if marker >= 0xC0 && marker <= 0xCF && ![0xC4, 0xC8, 0xCC].include?(marker)
+          if marker.between?(0xC0, 0xCF) && ![0xC4, 0xC8, 0xCC].include?(marker)
             frame = io.read(5) or return nil
-            height, width = frame.byteslice(1, 4).unpack("n2")
+            height, width = frame.byteslice(1, 4).unpack('n2')
             return [width, height]
           end
 
@@ -723,19 +714,19 @@ module Parrot
       # The site's base URL as declared in the layout, without a trailing slash.
       def canonical_base(html)
         node = html.at('head link[rel="canonical"]') || html.at('head meta[property="og:url"]')
-        value = node && (node["href"] || node["content"])
-        value && value.strip.chomp("/")
+        value = node && (node['href'] || node['content'])
+        value&.strip&.chomp('/')
       end
 
       # Same base URL, read straight from the rendered layout — for build steps
       # (sitemap, robots) that aren't tied to one page.
       def site_base_url
         layout = Tilt.new("#{app_root}/views/layout.html.erb")
-        canonical_base(Nokogiri::HTML(layout.render { "" }))
+        canonical_base(Nokogiri::HTML(layout.render { '' }))
       end
 
       def xml_escape(text)
-        text.gsub("&", "&amp;").gsub("<", "&lt;").gsub(">", "&gt;")
+        text.gsub('&', '&amp;').gsub('<', '&lt;').gsub('>', '&gt;')
       end
 
       def remove_built_post(post_path)
@@ -752,9 +743,9 @@ module Parrot
       def syntax_highlight_css
         theme = Rouge::Theme.find(HIGHLIGHT_THEME) || Rouge::Themes::Monokai
         [
-          theme.render(scope: ".highlighter-rouge"),
-          ".highlighter-rouge{margin:1rem 0;padding:1rem;overflow-x:auto;border-radius:6px}",
-          ".highlighter-rouge pre,.highlighter-rouge code{margin:0;padding:0;background:none;border:0}"
+          theme.render(scope: '.highlighter-rouge'),
+          '.highlighter-rouge{margin:1rem 0;padding:1rem;overflow-x:auto;border-radius:6px}',
+          '.highlighter-rouge pre,.highlighter-rouge code{margin:0;padding:0;background:none;border:0}'
         ].join("\n")
       end
 
@@ -784,7 +775,7 @@ module Parrot
       # the post listing and, when there's more than one page, a pager —
       # generated from views/posts/*.md, there is no views/index.md.
       def index_markdown(page_number, posts_meta, total_pages)
-        heading = page_number == 1 ? list_title_heading : ""
+        heading = page_number == 1 ? list_title_heading : ''
         markdown = "#{heading}#{render_post_listing(posts_meta)}\n"
 
         pager = pager_markdown(page_number, total_pages)
@@ -795,7 +786,7 @@ module Parrot
 
       # "index.html" for page 1, "index2.html", "index3.html", … after that.
       def index_filename(page_number)
-        page_number == 1 ? "index.html" : "index#{page_number}.html"
+        page_number == 1 ? 'index.html' : "index#{page_number}.html"
       end
 
       def index_page?(output_name)
@@ -805,7 +796,7 @@ module Parrot
       # config.yaml's post_listing.per_page as an Integer, or nil when unset
       # (or not a positive number) — meaning "don't paginate".
       def per_page_setting
-        value = post_listing_settings["per_page"].to_i
+        value = post_listing_settings['per_page'].to_i
         value.positive? ? value : nil
       end
 
@@ -825,7 +816,7 @@ module Parrot
       def page_number_lookup(posts_meta)
         lookup = {}
         paginated_posts(posts_meta).each_with_index do |chunk, index|
-          chunk.each { |meta| lookup[meta["__filename"]] = index + 1 }
+          chunk.each { |meta| lookup[meta['__filename']] = index + 1 }
         end
         lookup
       end
@@ -836,17 +827,13 @@ module Parrot
       # via an empty post_listing.newer_link_text/older_link_text).
       def pager_markdown(page_number, total_pages)
         settings = post_listing_settings
-        newer_text = settings.fetch("newer_link_text", DEFAULT_NEWER_LINK_TEXT)
-        older_text = settings.fetch("older_link_text", DEFAULT_OLDER_LINK_TEXT)
+        newer_text = settings.fetch('newer_link_text', DEFAULT_NEWER_LINK_TEXT)
+        older_text = settings.fetch('older_link_text', DEFAULT_OLDER_LINK_TEXT)
 
         links = []
-        if page_number > 1 && !newer_text.to_s.empty?
-          links << "[#{newer_text}](#{index_filename(page_number - 1)})"
-        end
-        if page_number < total_pages && !older_text.to_s.empty?
-          links << "[#{older_text}](#{index_filename(page_number + 1)})"
-        end
-        return "" if links.empty?
+        links << "[#{newer_text}](#{index_filename(page_number - 1)})" if page_number > 1 && !newer_text.to_s.empty?
+        links << "[#{older_text}](#{index_filename(page_number + 1)})" if page_number < total_pages && !older_text.to_s.empty?
+        return '' if links.empty?
 
         "#{links.join(' ~ ')}\n{: .pagination}"
       end
@@ -855,7 +842,7 @@ module Parrot
       # count, so a shrinking post count doesn't leave a stale index3.html
       # behind after a rebuild drops it to 2 pages.
       def cleanup_stale_index_pages(total_pages)
-        Dir[File.join(build_path, "index*.html")].each do |path|
+        Dir[File.join(build_path, 'index*.html')].each do |path|
           match = File.basename(path).match(/\Aindex(\d*)\.html\z/)
           next unless match
 
@@ -866,35 +853,36 @@ module Parrot
 
       def list_title_heading
         settings = post_listing_settings
-        return "" if settings.key?("list_title") && settings["list_title"].to_s.strip.empty?
+        return '' if settings.key?('list_title') && settings['list_title'].to_s.strip.empty?
 
-        "### #{settings["list_title"] || DEFAULT_LIST_TITLE}\n\n"
+        "### #{settings['list_title'] || DEFAULT_LIST_TITLE}\n\n"
       end
 
       # Every post's header metadata plus its parsed date and source filename,
       # newest first. Undated posts (or posts with an unparsable date) sort last.
       def sorted_posts_metadata
-        Dir["#{app_root}/views/posts/*.md"].map do |post_path|
+        posts_meta = Dir["#{app_root}/views/posts/*.md"].map do |post_path|
           meta = post_metadata(post_path)
           meta.merge(
-            "__filename" => File.basename(post_path),
-            "__date" => parse_post_date(meta["date"])
+            '__filename' => File.basename(post_path),
+            '__date' => parse_post_date(meta['date'])
           )
-        end.sort_by { |meta| meta["__date"] || Date.new(0) }.reverse
+        end
+        posts_meta.sort_by { |meta| meta['__date'] || Date.new(0) }.reverse
       end
 
       # Renders the Markdown post listing per config.yaml's
       # post_listing settings (list_format, and group_by: year/month/none).
       def render_post_listing(posts_meta)
         settings = post_listing_settings
-        format = settings["list_format"] || DEFAULT_LIST_FORMAT
-        group_by = settings["group_by"] || DEFAULT_GROUP_BY
+        format = settings['list_format'] || DEFAULT_LIST_FORMAT
+        group_by = settings['group_by'] || DEFAULT_GROUP_BY
 
         case group_by
-        when "year"
-          grouped_listing(posts_meta, format) { |date| date.strftime("%Y") }
-        when "month"
-          grouped_listing(posts_meta, format) { |date| date.strftime("%B %Y") }
+        when 'year'
+          grouped_listing(posts_meta, format) { |date| date.strftime('%Y') }
+        when 'month'
+          grouped_listing(posts_meta, format) { |date| date.strftime('%B %Y') }
         else
           flat_listing(posts_meta, format)
         end
@@ -908,7 +896,7 @@ module Parrot
       # order their label was first seen, so sections stay newest-first too.
       def grouped_listing(posts_meta, format)
         posts_meta
-          .group_by { |meta| meta["__date"] ? yield(meta["__date"]) : "Undated" }
+          .group_by { |meta| meta['__date'] ? yield(meta['__date']) : 'Undated' }
           .map { |label, entries| "## #{label}\n\n#{flat_listing(entries, format)}" }
           .join("\n\n")
       end
@@ -926,15 +914,15 @@ module Parrot
       # applied to the post's header `date`.
       def format_list_entry(format, meta)
         format.gsub(/\{([^}]*)\}/) do
-          token = $1
-          if token == "post_link"
+          token = ::Regexp.last_match(1)
+          if token == 'post_link'
             "##{meta['__filename']}"
-          elsif token == "post_date"
-            meta["__date"]&.strftime(post_date_format("on_list")) || ""
-          elsif token.start_with?("post_")
-            meta[token.sub(/\Apost_/, "")].to_s
+          elsif token == 'post_date'
+            meta['__date']&.strftime(post_date_format('on_list')) || ''
+          elsif token.start_with?('post_')
+            meta[token.sub(/\Apost_/, '')].to_s
           else
-            meta["__date"]&.strftime(token) || ""
+            meta['__date']&.strftime(token) || ''
           end
         end
       end
@@ -943,17 +931,16 @@ module Parrot
       def substitute_post_title(content, meta)
         return content if meta['title'].nil?
 
-        content.gsub("{post_title}", meta['title'])
+        content.gsub('{post_title}', meta['title'])
       end
-
 
       # Expands a literal "{post_date}" placeholder inside a post's own
       # Markdown body (as opposed to a post_listing list_format), formatted
       # per post_date_format.on_post.
       def substitute_post_date(content, meta)
-        return content unless meta["__date"]
+        return content unless meta['__date']
 
-        content.gsub("{post_date}") { meta["__date"].strftime(post_date_format("on_post")) }
+        content.gsub('{post_date}') { meta['__date'].strftime(post_date_format('on_post')) }
       end
 
       # The `on_list` or `on_post` pattern from config.yaml's
@@ -965,19 +952,19 @@ module Parrot
       # The `post_listing` section of config.yaml, or {} when the
       # file is missing or invalid.
       def post_listing_settings
-        posts_config["post_listing"] || {}
+        posts_config['post_listing'] || {}
       end
 
       # The `post_date_format` section of config.yaml, or {}.
       def post_date_format_settings
-        posts_config["post_date_format"] || {}
+        posts_config['post_date_format'] || {}
       end
 
       def posts_config
-        path = File.join(app_root, "config.yaml")
+        path = File.join(app_root, 'config.yaml')
         return {} unless File.exist?(path)
 
-        YAML.safe_load(File.read(path)) || {}
+        YAML.safe_load_file(path) || {}
       rescue Psych::SyntaxError => e
         config.logger.info "Invalid config.yaml, using defaults: #{e.message}"
         {}

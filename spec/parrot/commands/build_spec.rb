@@ -1,11 +1,11 @@
 require 'spec_helper'
 
 describe Parrot::Commands do
-  let(:config)  { Parrot::Config.new(Dir.pwd, TestLogger) }
+  let(:config) { Parrot::Config.new(Dir.pwd, TestLogger) }
 
   before do
     # create a new application
-    Parrot::Commands::NewCommand.new(%w( blog ), config).run
+    Parrot::Commands::NewCommand.new(%w[blog], config).run
   end
 
   after do
@@ -236,7 +236,7 @@ describe Parrot::Commands do
       end
 
       it 'adds nothing to posts without tags or to the index' do
-        html = build_story("")
+        html = build_story('')
 
         expect(html.at('.post-tags')).to be_nil
         expect(File.read('blog/public/index.html')).not_to include('post-tags')
@@ -339,7 +339,7 @@ describe Parrot::Commands do
 
       it 'formats {post_date} in list_format per post_date_format.on_list' do
         File.write('blog/config.yaml',
-                    "post_listing:\n  list_format: \"{post_date} ~ {post_title}\"\npost_date_format:\n  on_list: \"%m/%Y\"\n")
+                   "post_listing:\n  list_format: \"{post_date} ~ {post_title}\"\npost_date_format:\n  on_list: \"%m/%Y\"\n")
         Parrot::Commands::BuildCommand.new([], build_config).run
 
         index = File.read('blog/public/index.html')
@@ -401,7 +401,7 @@ describe Parrot::Commands do
 
       it 'honours custom newer_link_text/older_link_text from config.yaml' do
         File.write('blog/config.yaml',
-                    "post_listing:\n  per_page: 1\n  newer_link_text: \"Prev\"\n  older_link_text: \"Next\"\n")
+                   "post_listing:\n  per_page: 1\n  newer_link_text: \"Prev\"\n  older_link_text: \"Next\"\n")
         Parrot::Commands::BuildCommand.new([], build_config).run
 
         expect(File.read('blog/public/index.html')).to include('>Next<')

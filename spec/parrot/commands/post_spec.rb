@@ -5,7 +5,7 @@ describe Parrot::Commands do
 
   before do
     FileUtils.rm_rf('blog')
-    Parrot::Commands::NewCommand.new(%w( blog ), config).run
+    Parrot::Commands::NewCommand.new(%w[blog], config).run
   end
 
   after do
@@ -14,7 +14,7 @@ describe Parrot::Commands do
 
   context 'PostCommand' do
     it 'has a run method' do
-      expect(Parrot::Commands::PostCommand.new(%w( --title hello ), config)).to respond_to(:run)
+      expect(Parrot::Commands::PostCommand.new(%w[--title hello], config)).to respond_to(:run)
     end
 
     it 'shows the usage example when called without a title' do
@@ -23,12 +23,12 @@ describe Parrot::Commands do
     end
 
     it 'shows the usage example when --title is given no value' do
-      expect { Parrot::Commands::PostCommand.new(%w( --title ), config) }
+      expect { Parrot::Commands::PostCommand.new(%w[--title], config) }
         .to raise_error(ArgumentError, /parrot post --title "My new post"/)
     end
 
     it 'shows the usage example when the title has no usable characters' do
-      expect { Parrot::Commands::PostCommand.new(%w( --title !!! ), config).run }
+      expect { Parrot::Commands::PostCommand.new(%w[--title !!!], config).run }
         .to raise_error(ArgumentError, /parrot post --title "My new post"/)
     end
 
@@ -50,8 +50,8 @@ describe Parrot::Commands do
     end
 
     it 'refuses to overwrite an existing post' do
-      Parrot::Commands::PostCommand.new(%w( --title Dup ), config).run
-      expect { Parrot::Commands::PostCommand.new(%w( --title Dup ), config).run }.to raise_error(/already exists/)
+      Parrot::Commands::PostCommand.new(%w[--title Dup], config).run
+      expect { Parrot::Commands::PostCommand.new(%w[--title Dup], config).run }.to raise_error(/already exists/)
     end
   end
 end

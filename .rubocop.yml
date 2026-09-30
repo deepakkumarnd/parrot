@@ -1,0 +1,28 @@
+AllCops:
+  TargetRubyVersion: 3.2
+  NewCops: enable
+  SuggestExtensions: false
+  Exclude:
+    - 'blog/**/*'
+    - 'vendor/**/*'
+
+# BuildCommand is one large class by design; size/complexity limits and
+# class doc comments aren't enforced.
+Metrics:
+  Enabled: false
+
+Style/Documentation:
+  Enabled: false
+
+Style/FrozenStringLiteralComment:
+  Enabled: false
+
+Layout/LineLength:
+  Max: 150
+
+# Commands take `(args = [], config)`; changing that would change their API.
+Style/OptionalArguments:
+  Enabled: false
+
+Style/OptionalBooleanParameter:
+  Enabled: false

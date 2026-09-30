@@ -3,8 +3,9 @@ source 'https://rubygems.org'
 # define only the development dependencies here
 group :development do
   gem 'debug'
-  gem 'rspec'
   gem 'pry'
+  gem 'rspec'
+  gem 'rubocop', require: false
 end
 
 # All runtime dependencies are defined in gemspec
