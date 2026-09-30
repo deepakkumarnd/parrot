@@ -1,7 +1,7 @@
 require 'spec_helper'
 
 describe Parrot::Runner do
-  let(:config)  { Parrot::Config.new(Dir.pwd, TestLogger) }
+  let(:config) { Parrot::Config.new(Dir.pwd, TestLogger) }
 
   context 'Runner class' do
     it 'should raise error if no application name provided for the new sub command' do
@@ -9,16 +9,16 @@ describe Parrot::Runner do
     end
 
     it 'should create a NewCommand object' do
-      runner = Parrot::Runner.new('new', %w( foo ), config)
+      runner = Parrot::Runner.new('new', %w[foo], config)
       expect(runner.command).to be_an_instance_of(Parrot::Commands::NewCommand)
     end
 
     it 'should create a BuildCommand object' do
-      expect(Parrot::Runner.new('build', %w( foo ), config).command).to be_an_instance_of(Parrot::Commands::BuildCommand)
+      expect(Parrot::Runner.new('build', %w[foo], config).command).to be_an_instance_of(Parrot::Commands::BuildCommand)
     end
 
     it 'should create a ServeCommand object' do
-      expect(Parrot::Runner.new('serve', %w( foo ), config).command).to be_an_instance_of(Parrot::Commands::ServeCommand)
+      expect(Parrot::Runner.new('serve', %w[foo], config).command).to be_an_instance_of(Parrot::Commands::ServeCommand)
     end
 
     it 'should raise error if the command is invalid' do

@@ -2,7 +2,6 @@ require 'digest'
 require 'singleton'
 
 class FileCache
-
   include Singleton
 
   attr_accessor :cache
@@ -29,9 +28,10 @@ class FileCache
   end
 
   def changed?(path)
-    return true unless cache.has_key?(path)
+    return true unless cache.key?(path)
+
     data = File.read(path)
-    !(cache[path] == Digest::SHA256.hexdigest(data))
+    cache[path] != Digest::SHA256.hexdigest(data)
   end
 
   private

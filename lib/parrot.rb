@@ -12,38 +12,38 @@ module Parrot
   SubcommandEntry = Struct.new(:usage, :docstr)
 
   SUB_COMMANDS_DOC = {
-    new: SubcommandEntry.new('new <blog_name>',  'Create new blog'),
+    new: SubcommandEntry.new('new <blog_name>', 'Create new blog'),
     build: SubcommandEntry.new('build', 'Build the blog'),
     serve: SubcommandEntry.new('serve', 'Start development server locally'),
     post: SubcommandEntry.new('post --title <post title>', 'Add new post with a title')
   }.freeze
-  
-  USAGE_LINE = 'parrot [options] [subcommand] [args]'
+
+  USAGE_LINE = 'parrot [options] [subcommand] [args]'.freeze
 
   HELP_TEXT =
-<<HELP_TEXT
-Examples:
-  - Create new blog
-    parrot new blog
-  
-  - Start development server
-    cd blog
-    parrot serve
+    <<~HELP_TEXT.freeze
+      Examples:
+        - Create new blog
+          parrot new blog
+      #{'  '}
+        - Start development server
+          cd blog
+          parrot serve
 
-  - Add a new post
-    parrot post --title \"My first post\"
+        - Add a new post
+          parrot post --title "My first post"
 
-  - Build the blog
-    parrot build
-HELP_TEXT
+        - Build the blog
+          parrot build
+    HELP_TEXT
 
-  HELP_HEADER = 
-<<HEADER_TEXT
-Version:          #{Parrot::VERSION}
-Usage:            #{USAGE_LINE}
-Repository:       #{Parrot::HOMEPAGE}
-Repository:       #{Parrot::HOMEPAGE}/blob/master/README.md
-HEADER_TEXT
+  HELP_HEADER =
+    <<~HEADER_TEXT.freeze
+      Version:          #{Parrot::VERSION}
+      Usage:            #{USAGE_LINE}
+      Repository:       #{Parrot::HOMEPAGE}
+      Repository:       #{Parrot::HOMEPAGE}/blob/master/README.md
+    HEADER_TEXT
 
   class Parrot
     SUB_COMMANDS = SUB_COMMANDS_DOC.keys.map(&:to_s).freeze
@@ -62,8 +62,9 @@ HEADER_TEXT
 
     def run
       return if @command.nil?
+
       exit_if_invalid(@command)
-      Runner.new(@command, @args, self.config).run_command
+      Runner.new(@command, @args, config).run_command
     rescue ArgumentError => e
       # A command was called with missing or malformed arguments; show how to
       # call it instead of dumping a backtrace.
@@ -72,11 +73,11 @@ HEADER_TEXT
     end
 
     def exit_if_invalid(command)
-      if !SUB_COMMANDS.include?(command)
-        puts("That is not a valid command. View detailed help with parrot -h")
-        puts USAGE_LINE
-        exit!
-      end
+      return if SUB_COMMANDS.include?(command)
+
+      puts('That is not a valid command. View detailed help with parrot -h')
+      puts USAGE_LINE
+      exit!
     end
 
     def quiet?
@@ -85,22 +86,24 @@ HEADER_TEXT
 
     def usage(parser = nil)
       max_length = SUB_COMMANDS_DOC.map { |_k, v| v.usage.length }.max + 10
-      sub_command_doc = SUB_COMMANDS_DOC.map do |command, entry|
-        entry_text = "#{entry.usage}".ljust(max_length)
+      sub_command_doc = SUB_COMMANDS_DOC.map do |_command, entry|
+        entry_text = entry.usage.to_s.ljust(max_length)
         "#{entry_text}#{entry.docstr}"
       end.join("\n")
 
       sub_command_doc = "Sub Commands:\n#{sub_command_doc}\n"
-      line_sep = '-' * 80 + "\n"
+      line_sep = "#{'-' * 80}\n"
       [
-        HELP_HEADER, 
+        HELP_HEADER,
         parser,
         sub_command_doc,
         HELP_TEXT
       ].join(line_sep)
     end
 
-    private def extract_options!(args)
+    private
+
+    def extract_options!(args)
       OptionParser.new("Usage: #{USAGE_LINE}") do |parser|
         parser.on('-q', '--quiet', 'Quiet mode') { @options[:quiet] = true }
         parser.on_tail('-v', '--version', 'Prints version information') do

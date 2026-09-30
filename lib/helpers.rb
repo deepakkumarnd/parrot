@@ -1,6 +1,6 @@
 module Parrot
   module Helpers
-    extend self
+    module_function
 
     def testing?
       ENV['PARROT_TESTING'] == 'true'

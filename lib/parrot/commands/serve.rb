@@ -8,15 +8,14 @@ require_relative 'build'
 module Parrot
   module Commands
     class ServeCommand
-
       # Combined checksum of the last successful build, kept inside the build
       # directory. It is regenerated output, so it is gitignored and must be
       # excluded from anything that ships the build directory.
-      CHECKSUM_FILE = ".checksum"
+      CHECKSUM_FILE = '.checksum'.freeze
 
       attr_reader :config, :document_root, :app_root
-      
-      def initialize(args=[], config)
+
+      def initialize(args = [], config)
         @config = config
         @args = args
         @app_root = config.root_dir
@@ -36,7 +35,7 @@ module Parrot
       private
 
       def run_server
-        server = WEBrick::HTTPServer.new :Port => @port, :DocumentRoot => @document_root
+        server = WEBrick::HTTPServer.new Port: @port, DocumentRoot: @document_root
 
         trap 'INT' do
           server.shutdown
@@ -48,7 +47,7 @@ module Parrot
       def watch_app
         ENV['HANDLER'] = `uname`.strip
         watcher = Watchr::Script.new
-        all_files = Dir.glob("**/*").select { |item| File.file?(item) && !item.start_with?("public/")}
+        all_files = Dir.glob('**/*').select { |item| File.file?(item) && !item.start_with?('public/') }
         @cache = FileCache.instance
         builder = BuildCommand.new([], config)
         builder.unset_build_mode!
@@ -60,7 +59,7 @@ module Parrot
 
         build_if_stale(builder, @cache.checksum)
 
-        watcher.watch(all_files.join("|")) do |file|
+        watcher.watch(all_files.join('|')) do |file|
           config.logger.info "File changed #{file}"
           path = "#{app_root}/#{file}"
 
@@ -72,7 +71,7 @@ module Parrot
 
         controller = Watchr::Controller.new(watcher, Watchr.handler.new)
         controller.run
-      rescue Exception => e
+      rescue Exception => e # rubocop:disable Lint/RescueException -- also log Ctrl-C/exit from the watcher loop
         config.logger.error(e.backtrace.join("\n"))
         exit(-1)
       end
@@ -86,7 +85,7 @@ module Parrot
         stored = File.read(checksum_path).strip if File.exist?(checksum_path)
 
         if stored == checksum
-          config.logger.info "No source changes since last build, skipping full build"
+          config.logger.info 'No source changes since last build, skipping full build'
           return
         end
 
@@ -96,15 +95,9 @@ module Parrot
       end
 
       def handle_path(path)
-        while path[-1] == '/'
-          path.chop!
-        end
+        path.chop! while path[-1] == '/'
 
-        if path == ''
-          path = '/index.html'
-        else
-          path = path
-        end
+        path = '/index.html' if path == ''
 
         template_type = path.split('.').last.to_sym
         handler = TemplateHandler.new(root: document_root, path: path, handle: template_type)

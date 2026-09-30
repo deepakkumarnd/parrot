@@ -1,9 +1,9 @@
 describe Parrot::Commands do
-  let(:config)  { Parrot::Config.new(Dir.pwd, TestLogger) }
+  let(:config) { Parrot::Config.new(Dir.pwd, TestLogger) }
 
   before do
     # create a new application
-    Parrot::Commands::NewCommand.new(%w( blog ), config).run
+    Parrot::Commands::NewCommand.new(%w[blog], config).run
   end
 
   after do

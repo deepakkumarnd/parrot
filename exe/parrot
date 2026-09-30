@@ -3,9 +3,9 @@
 require 'bundler/setup'
 
 begin
-  require  File.expand_path('../../lib/parrot.rb', File.realpath(__FILE__))
-  Parrot::Parrot.new(ARGV).run()
-rescue => e
+  require File.expand_path('../../lib/parrot.rb', File.realpath(__FILE__))
+  Parrot::Parrot.new(ARGV).run
+rescue StandardError => e
   warn "Fatal error: #{e.message}"
   warn e.backtrace.join("\n")
 end

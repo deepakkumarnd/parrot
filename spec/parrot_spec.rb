@@ -2,16 +2,15 @@ require 'spec_helper'
 
 describe Parrot do
   context 'with option -v' do
-    let(:args) { %w( -v ) }
+    let(:args) { %w[-v] }
 
     it 'displays version info' do
       expect { Parrot::Parrot.new(args).run }.to output("Parrot: #{Parrot::VERSION}\n").to_stdout
     end
   end
 
-  
   context 'with option -h' do
-    let(:args) { %w( -h ) }
+    let(:args) { %w[-h] }
     it 'displays help message' do
       expect { Parrot::Parrot.new(args).run }.to output(/Sub Commands:/).to_stdout
     end
@@ -24,7 +23,7 @@ describe Parrot do
     end
 
     it 'will be be quiet on quiet option' do
-      args = %w( -q )
+      args = %w[-q]
       parrot = Parrot::Parrot.new(args)
       expect(parrot).to be_quiet
     end

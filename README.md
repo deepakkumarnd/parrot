@@ -266,7 +266,11 @@ sitemap and feed) for hosts that serve it on a missing path.
 $ ./bin/setup                 # install dependencies and install githooks
 $ rspec                       # run the test suite
 $ rspec -f d                  # documentation format
+$ bundle exec rubocop         # lint (config in .rubocop.yml)
 ```
+
+GitHub Actions (`.github/workflows/ci.yml`) runs RSpec and RuboCop on every pull
+request and on pushes to `master`.
 
 Run the suite from a directory that has no `blog/` folder — some specs create
 and delete `./blog`.
