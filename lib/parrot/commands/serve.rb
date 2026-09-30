@@ -13,6 +13,26 @@ module Parrot
       # excluded from anything that ships the build directory.
       CHECKSUM_FILE = '.checksum'.freeze
 
+      # Serves the build directory like WEBrick's FileHandler, but answers a
+      # missing path with the built 404.html (still with a 404 status), the
+      # way static hosts do, instead of WEBrick's generic error page.
+      class FileHandler < WEBrick::HTTPServlet::FileHandler
+        def initialize(server, root, options = {}, default = WEBrick::Config::FileHandler)
+          super
+          @not_found_page = File.join(root, '404.html')
+        end
+
+        def service(req, res)
+          super
+        rescue WEBrick::HTTPStatus::NotFound
+          raise unless File.file?(@not_found_page)
+
+          res.status = 404
+          res['Content-Type'] = 'text/html; charset=utf-8'
+          res.body = File.read(@not_found_page)
+        end
+      end
+
       attr_reader :config, :document_root, :app_root
 
       def initialize(args = [], config)
@@ -35,7 +55,8 @@ module Parrot
       private
 
       def run_server
-        server = WEBrick::HTTPServer.new Port: @port, DocumentRoot: @document_root
+        server = WEBrick::HTTPServer.new Port: @port
+        server.mount('/', FileHandler, @document_root)
 
         trap 'INT' do
           server.shutdown

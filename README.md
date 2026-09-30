@@ -258,7 +258,8 @@ first, linked from every page for autodiscovery). These use the base URL from
 `Sitemap:` line.
 
 `views/404.md` is built to `public/404.html` (marked `noindex`, kept out of the
-sitemap and feed) for hosts that serve it on a missing path.
+sitemap and feed) for hosts that serve it on a missing path. `parrot serve` does
+the same locally, answering a missing path with that page and a 404 status.
 
 ## Development
 
