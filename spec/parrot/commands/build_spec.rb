@@ -209,6 +209,26 @@ describe Parrot::Commands do
         expect(File.read('blog/public/about_parrot.html')).to include('<html lang="en">')
         expect(File.read('blog/public/index.html')).to include('<html lang="en">')
       end
+
+      it 'leaves skipped drafts out of the index listing, sitemap and feed' do
+        File.write('blog/views/posts/story.md', "<!--\ntitle: Story\ndate: 01/10/2026\ndraft: true\n-->\n\n# story\n")
+        Parrot::Commands::BuildCommand.new([], build_config).run
+
+        %w[index.html sitemap.xml feed.xml].each do |name|
+          expect(File.read("blog/public/#{name}")).not_to include('story.html')
+        end
+      end
+
+      it 'lists drafts in the index listing, sitemap and feed while editing, since they are built' do
+        File.write('blog/views/posts/story.md', "<!--\ntitle: Story\ndate: 01/10/2026\ndraft: true\n-->\n\n# story\n")
+        builder = Parrot::Commands::BuildCommand.new([], build_config)
+        builder.unset_build_mode!
+        builder.run
+
+        %w[index.html sitemap.xml feed.xml].each do |name|
+          expect(File.read("blog/public/#{name}")).to include('story.html')
+        end
+      end
     end
 
     context 'post tags' do
@@ -452,6 +472,17 @@ describe Parrot::Commands do
         expect(sitemap).to include('<loc>https://example.com/index2.html</loc>')
       end
 
+      it 'rewrites the sitemap when the watcher rebuilds after per_page changes in config.yaml' do
+        command = Parrot::Commands::BuildCommand.new([], build_config)
+        command.run
+        expect(File.read('blog/public/sitemap.xml')).not_to include('index2.html')
+
+        File.write('blog/config.yaml', "post_listing:\n  per_page: 1\n")
+        command.build('config.yaml')
+
+        expect(File.read('blog/public/sitemap.xml')).to include('<loc>https://example.com/index2.html</loc>')
+      end
+
       it "updates a pushed post's back-link when the watcher rebuilds after a new post shifts pagination" do
         File.write('blog/config.yaml', "post_listing:\n  per_page: 1\n")
         command = Parrot::Commands::BuildCommand.new([], build_config)
@@ -464,6 +495,88 @@ describe Parrot::Commands do
         main_html = File.read('blog/public/index2.html')[%r{<main>.*?</main>}m]
         pushed_post = main_html[/href="([^"]+\.html)"/, 1]
         expect(File.read("blog/public/#{pushed_post}")).to include('<a href="index2.html">')
+      end
+    end
+
+    context 'about page' do
+      let(:build_config) { Parrot::Config.new(File.join(Dir.pwd, 'blog'), Logger.new(File::NULL)) }
+      let(:command) { Parrot::Commands::BuildCommand.new([], build_config) }
+
+      before { command.run }
+
+      it 'builds about.html with its own title, description and social links' do
+        page = File.read('blog/public/about.html')
+        expect(page).to include('<title>About</title>')
+        expect(page).to include('<meta name="description" content="Who writes this blog, and where else to find them.">')
+        expect(page).to include('<meta property="og:url" content="https://example.com/about.html">')
+        expect(page).to include('href="https://github.com/your-username"')
+        expect(page.scan('<h1').size).to eq(1)
+      end
+
+      it 'is an AboutPage, not an article' do
+        page = File.read('blog/public/about.html')
+        expect(page).to include('<meta property="og:type" content="website">')
+        expect(page).not_to include('article:published_time')
+        expect(page).to include('"@type": "AboutPage"')
+      end
+
+      it 'is linked from the nav on every page' do
+        %w[index.html sample.html about.html 404.html].each do |name|
+          nav = File.read("blog/public/#{name}")[%r{<nav class="site-nav">.*?</nav>}m]
+          expect(nav).to include('<a href="/about.html">About</a>')
+        end
+      end
+
+      it 'is in the sitemap but not the index listing or the feed' do
+        expect(File.read('blog/public/sitemap.xml')).to include('<loc>https://example.com/about.html</loc>')
+        expect(File.read('blog/public/index.html')[%r{<main>.*?</main>}m]).not_to include('about.html')
+        expect(File.read('blog/public/feed.xml')).not_to include('about.html')
+      end
+
+      it 'is rebuilt by the watcher when views/about.md changes' do
+        File.write('blog/views/about.md', "# About me\n\nSomething new about the author of this blog.\n")
+        command.build('views/about.md')
+
+        page = File.read('blog/public/about.html')
+        expect(page).to include('<title>About me</title>')
+        expect(page).to include('Something new about the author of this blog.')
+      end
+
+      it 'is removed, along with its sitemap entry, when views/about.md is deleted' do
+        File.delete('blog/views/about.md')
+        command.build('views/about.md')
+
+        expect(File.exist?('blog/public/about.html')).to be false
+        expect(File.read('blog/public/sitemap.xml')).not_to include('about.html')
+      end
+    end
+
+    context 'reserved post filenames' do
+      let(:build_config) { Parrot::Config.new(File.join(Dir.pwd, 'blog'), Logger.new(File::NULL)) }
+      let(:command) { Parrot::Commands::BuildCommand.new([], build_config) }
+
+      %w[about.md 404.md index.md index3.md About.md now.md post.md posts.md note.md notes.md].each do |name|
+        it "fails the build on views/posts/#{name} before writing anything" do
+          command.run
+          File.write("blog/views/posts/#{name}", "# Clash\n")
+
+          expect { command.run }.to raise_error(%r{Reserved post filename: views/posts/#{Regexp.escape(name)}})
+          expect(File.exist?('blog/public/index.html')).to be true
+        end
+      end
+
+      it 'fails the watcher rebuild when such a post appears' do
+        command.run
+        File.write('blog/views/posts/about.md', "# Clash\n")
+
+        expect { command.build('views/posts/about.md') }.to raise_error(/Reserved post filename/)
+        expect(File.read('blog/public/about.html')).to include('<title>About</title>')
+      end
+
+      it 'builds posts whose names only contain a reserved word' do
+        File.write('blog/views/posts/about-me.md', "# About me\n")
+        expect { command.run }.not_to raise_error
+        expect(File.exist?('blog/public/about-me.html')).to be true
       end
     end
 

@@ -63,6 +63,7 @@ blog/
 ├── views/
 │   ├── layout.html.erb   # page wrapper; <%= yield %> is the rendered Markdown
 │   ├── 404.md            # built to public/404.html
+│   ├── about.md          # built to public/about.html, linked from the nav
 │   └── posts/
 │       └── *.md          # one Markdown file per post
 ├── css/
@@ -182,6 +183,8 @@ draft: true
 ```
 
 If `draft: true` is set in the header then the post becomes a draft, the draft post won't be published. By default draft mode is set to false.
+`parrot build` leaves drafts out of the index listing, `sitemap.xml` and
+`feed.xml` too; `parrot serve` builds and lists them so you can preview them.
 
 ## The index page
 
@@ -234,11 +237,11 @@ defaults shown above.
   then writes the new checksum. Otherwise it skips straight to serving the
   existing `public/`.
 - While running, each saved file rebuilds only what it affects: a single post,
-  a new/removed post, `views/404.md`, the compiled CSS, `app.js`, or a copied
+  a new/removed post, `views/404.md`, `views/about.md`, the compiled CSS, `app.js`, or a copied
   image. Because the index is generated from `views/posts/*.md`, adding,
   removing or editing a post also rebuilds the index (along with
-  `sitemap.xml` and `feed.xml`); editing `config.yaml` rebuilds the index and
-  every post, since it can affect both the listing and each post's
+  `sitemap.xml` and `feed.xml`); editing `config.yaml` rebuilds the index,
+  `sitemap.xml` and every post, since it can affect both the listing and each post's
   `{post_date}` placeholder. Editing `views/layout.html.erb` rebuilds
   everything.
 - `public/.checksum` is regenerated build state. It is gitignored and must not
@@ -260,6 +263,17 @@ first, linked from every page for autodiscovery). These use the base URL from
 `views/404.md` is built to `public/404.html` (marked `noindex`, kept out of the
 sitemap and feed) for hosts that serve it on a missing path. `parrot serve` does
 the same locally, answering a missing path with that page and a 404 status.
+
+`views/about.md` is built to `public/about.html`, which the layout's nav links
+to from every page — put your bio and social links there. It takes the same
+optional `title`/`description`/`lang` header as a post, is listed in the
+sitemap, and stays out of the index listing and the feed. Delete the file (and
+its nav link) if you don't want an About page.
+
+`about`, `404`, `index`, `index2`, `index3`, …, `now`, `post`, `posts`, `note`
+and `notes` are reserved post names — the first few would overwrite Parrot's
+own pages, the rest are kept free for pages of their own. `parrot post` refuses
+such a title, and `parrot build` fails if one is in `views/posts/`.
 
 ## Development
 

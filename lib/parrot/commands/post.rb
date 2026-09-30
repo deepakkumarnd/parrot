@@ -25,6 +25,11 @@ module Parrot
 
       def run
         raise ArgumentError, "Title has no letters or digits to build a filename from.\n#{USAGE}" if slug.empty?
+        if slug.match?(RESERVED_POST_NAMES)
+          raise ArgumentError,
+                "\"#{slug}\" is a reserved post name (index*, 404, about, now, post(s), note(s)). " \
+                "Pick a different title.\n#{USAGE}"
+        end
 
         posts_dir = File.join(app_root, 'views', 'posts')
 

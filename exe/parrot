@@ -8,4 +8,5 @@ begin
 rescue StandardError => e
   warn "Fatal error: #{e.message}"
   warn e.backtrace.join("\n")
+  exit 1
 end

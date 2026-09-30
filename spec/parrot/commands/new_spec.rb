@@ -30,6 +30,7 @@ describe Parrot::Commands do
           "#{app_name}/javascripts/app.js",
           "#{app_name}/public/.keep",
           "#{app_name}/views/404.md",
+          "#{app_name}/views/about.md",
           "#{app_name}/views/layout.html.erb",
           "#{app_name}/views/posts/about_parrot.md",
           "#{app_name}/views/posts/sample.md"
