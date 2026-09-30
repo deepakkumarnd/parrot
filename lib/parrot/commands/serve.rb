@@ -93,7 +93,7 @@ module Parrot
         controller = Watchr::Controller.new(watcher, Watchr.handler.new)
         controller.run
       rescue Exception => e # rubocop:disable Lint/RescueException -- also log Ctrl-C/exit from the watcher loop
-        config.logger.error(e.backtrace.join("\n"))
+        config.logger.error("#{e.message}\n#{e.backtrace.join("\n")}")
         exit(-1)
       end
 

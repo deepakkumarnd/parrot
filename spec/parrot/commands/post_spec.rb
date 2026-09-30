@@ -49,6 +49,26 @@ describe Parrot::Commands do
       expect(File.exist?('blog/views/posts/a-plain-title.md')).to be true
     end
 
+    %w[About 404 Index index2 ABOUT Now post Posts note NOTES].each do |title|
+      it "refuses the reserved title #{title.inspect}" do
+        expect { Parrot::Commands::PostCommand.new(['--title', title], config).run }
+          .to raise_error(ArgumentError, /is a reserved post name/)
+        expect(Dir['blog/views/posts/*.md'].map { |path| File.basename(path) })
+          .to contain_exactly('about_parrot.md', 'sample.md')
+      end
+    end
+
+    it 'allows titles that only contain a reserved word' do
+      Parrot::Commands::PostCommand.new(['--title', 'About me'], config).run
+      Parrot::Commands::PostCommand.new(['--title', 'Index 2'], config).run
+      Parrot::Commands::PostCommand.new(['--title', 'Notes on Ruby'], config).run
+      Parrot::Commands::PostCommand.new(['--title', 'Nowhere'], config).run
+      expect(File.exist?('blog/views/posts/about-me.md')).to be true
+      expect(File.exist?('blog/views/posts/index-2.md')).to be true
+      expect(File.exist?('blog/views/posts/notes-on-ruby.md')).to be true
+      expect(File.exist?('blog/views/posts/nowhere.md')).to be true
+    end
+
     it 'refuses to overwrite an existing post' do
       Parrot::Commands::PostCommand.new(%w[--title Dup], config).run
       expect { Parrot::Commands::PostCommand.new(%w[--title Dup], config).run }.to raise_error(/already exists/)

@@ -86,7 +86,7 @@ module Parrot
         posts_meta = sorted_posts_metadata
         page_lookup = page_number_lookup(posts_meta)
 
-        Dir["#{app_root}/views/posts/*.md"].each do |post_path|
+        published_post_paths.each do |post_path|
           build_post(post_path, page_lookup.fetch(File.basename(post_path), 1))
         end
       end
@@ -110,6 +110,35 @@ module Parrot
         (html.at('head') || html).add_child(robots)
 
         output = File.join(build_path, '404.html')
+        File.write(output, html)
+        config.logger.info "Built #{output}"
+      end
+
+      # Builds public/about.html from views/about.md, the page the layout's nav
+      # links to. It takes the same optional `<!-- key: value -->` header as a
+      # post (title, description, lang) but isn't one: it stays out of the
+      # index listing and the feed, and is listed in the sitemap. A previously
+      # built page is removed once views/about.md is gone.
+      def build_about_page
+        source = File.join(app_root, 'views', 'about.md')
+        output = File.join(build_path, 'about.html')
+
+        unless File.exist?(source)
+          FileUtils.rm_f(output)
+          return
+        end
+
+        meta = post_metadata(source)
+        layout = Tilt.new("#{app_root}/views/layout.html.erb")
+        body = markdown(source).render
+
+        html = update_internal_links(layout.render { body })
+        copy_image_assets(html)
+
+        meta['title'] ||= html.at('main h1')&.text
+        meta['description'] ||= summarize(body)
+        apply_page_meta(html, 'about.html', meta, kind: :about)
+
         File.write(output, html)
         config.logger.info "Built #{output}"
       end
@@ -258,11 +287,13 @@ module Parrot
 
       def run
         config.logger.info "Building application at #{app_root}"
+        check_reserved_post_names!
         FileUtils.rm_rf('public')
         FileUtils.mkdir('public')
         build_index_page
         build_posts
         build_404_page
+        build_about_page
         build_sitemap
         build_robots
         build_feed
@@ -281,7 +312,7 @@ module Parrot
           return
         end
 
-        posts = Dir["#{app_root}/views/posts/*.md"]
+        posts = published_post_paths
         post_dates = posts.map { |post_path| iso_date(post_metadata(post_path)['date']) }.compact
         newest = post_dates.max
 
@@ -295,6 +326,8 @@ module Parrot
           name = File.basename(post_path).sub('.md', '.html')
           entries << { loc: "#{base}/#{name}", lastmod: iso_date(post_metadata(post_path)['date']) }
         end
+
+        entries << { loc: "#{base}/about.html" } if File.exist?(File.join(app_root, 'views', 'about.md'))
 
         xml = +%(<?xml version="1.0" encoding="UTF-8"?>\n)
         xml << %(<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n)
@@ -336,7 +369,7 @@ module Parrot
         channel_title = meta_content(layout_html, 'meta[property="og:site_name"]') || 'Parrot'
         channel_desc = meta_content(layout_html, 'meta[name="description"]') || ''
 
-        items = Dir["#{app_root}/views/posts/*.md"].map do |post_path|
+        items = published_post_paths.map do |post_path|
           meta = post_metadata(post_path)
           url = "#{base}/#{File.basename(post_path).sub('.md', '.html')}"
           {
@@ -392,17 +425,25 @@ module Parrot
           build_index_page
           build_posts
           build_404_page
+          build_about_page
           build_sitemap
           build_robots
           build_feed
         when 'views/404.md'
           build_404_page
+        when 'views/about.md'
+          build_about_page
+          build_sitemap
         when 'config.yaml'
           # post_listing settings change the index; post_date_format also
           # affects the {post_date} placeholder inside every post's own body.
+          # per_page changes how many index pages there are, so the sitemap
+          # listing them is rewritten too.
           build_index_page
           build_posts
+          build_sitemap
         when %r{\Aviews/posts/[^/]+\.md\z}
+          check_reserved_post_names!
           remove_built_post(path) unless File.exist?(path)
           # A post was added, removed or had its date/title/summary changed,
           # any of which can change the generated index listing and, when
@@ -425,6 +466,30 @@ module Parrot
       end
 
       private
+
+      # Fails the build, before anything is written, when a post's filename
+      # is one of RESERVED_POST_NAMES and so would overwrite (or be
+      # overwritten by) a page Parrot generates itself.
+      def check_reserved_post_names!
+        clashes = Dir["#{app_root}/views/posts/*.md"].select do |post_path|
+          File.basename(post_path, '.md').match?(RESERVED_POST_NAMES)
+        end
+        return if clashes.empty?
+
+        names = clashes.map { |post_path| "views/posts/#{File.basename(post_path)}" }.join(', ')
+        raise "Reserved post filename: #{names}. index*, 404, about, now, post(s) and note(s) " \
+              "can't be used as post names; rename the post to build."
+      end
+
+      # The posts this build writes out: every views/posts/*.md, minus drafts
+      # under `parrot build` (`serve` builds drafts so they can be previewed).
+      # The index listing, sitemap and feed read from this too, so none of
+      # them links a page that wasn't built.
+      def published_post_paths
+        Dir["#{app_root}/views/posts/*.md"].reject do |post_path|
+          build_mode? && draft_post?(post_metadata(post_path))
+        end
+      end
 
       def draft_post?(meta)
         meta['draft'] == 'true'
@@ -464,10 +529,10 @@ module Parrot
       # path into an absolute URL (copying the file into the build). The site's
       # base URL comes from the layout (its canonical/og:url tag); the generated
       # file's path is appended so each page points at itself. `meta` is the
-      # post's header Hash (empty for the index).
-      def apply_page_meta(html, output_name, meta = {})
+      # post's header Hash (empty for the index). `kind` is :index, :post or
+      # :about; only a post gets article metadata.
+      def apply_page_meta(html, output_name, meta = {}, kind: index_page?(output_name) ? :index : :post)
         title = meta['title']
-        is_post = !index_page?(output_name)
 
         if title && !title.empty?
           title_tag = html.at('head title')
@@ -497,14 +562,14 @@ module Parrot
 
         apply_description(html, meta['description'])
         apply_locale(html, meta['lang'])
-        apply_article_meta(html, meta) if is_post
+        apply_article_meta(html, meta) if kind == :post
 
         resolve_og_image(html, base)
 
         feed = html.at('head link[rel="alternate"][type="application/rss+xml"]')
         feed['href'] = "#{base}/feed.xml" if feed && !feed['href'].to_s.start_with?('http')
 
-        inject_json_ld(html, is_post, meta, page_url)
+        inject_json_ld(html, kind, meta, page_url)
       end
 
       # Fills <meta name="description">, og:description and twitter:description
@@ -529,19 +594,21 @@ module Parrot
         node['content'] = locales.fetch(lang, lang)
       end
 
-      # Adds a schema.org JSON-LD block: BlogPosting for a post, WebSite for the
-      # index. Values are read back from the <head> this method has just filled.
-      def inject_json_ld(html, is_post, meta, page_url)
+      # Adds a schema.org JSON-LD block: BlogPosting for a post, AboutPage for
+      # the about page, WebSite for the index. Values are read back from the
+      # <head> this method has just filled.
+      def inject_json_ld(html, kind, meta, page_url)
         site_name = meta_content(html, 'meta[property="og:site_name"]')
         description = meta_content(html, 'meta[name="description"]')
 
         data = {
           '@context' => 'https://schema.org',
-          '@type' => is_post ? 'BlogPosting' : 'WebSite',
+          '@type' => { post: 'BlogPosting', about: 'AboutPage', index: 'WebSite' }.fetch(kind),
           'url' => page_url
         }
 
-        if is_post
+        case kind
+        when :post
           data['headline'] = html.at('head title')&.text || meta['title']
           data['mainEntityOfPage'] = page_url
           data['inLanguage'] = meta['lang'] || 'en'
@@ -557,6 +624,9 @@ module Parrot
           author = meta_content(html, 'meta[name="author"]')
           data['author'] = { '@type' => 'Person', 'name' => author } if author
           data['publisher'] = { '@type' => 'Organization', 'name' => site_name } if site_name
+        when :about
+          data['name'] = html.at('head title')&.text
+          data['description'] = description if description
         else
           data['name'] = site_name || html.at('head title')&.text
           data['description'] = description if description
@@ -861,7 +931,7 @@ module Parrot
       # Every post's header metadata plus its parsed date and source filename,
       # newest first. Undated posts (or posts with an unparsable date) sort last.
       def sorted_posts_metadata
-        posts_meta = Dir["#{app_root}/views/posts/*.md"].map do |post_path|
+        posts_meta = published_post_paths.map do |post_path|
           meta = post_metadata(post_path)
           meta.merge(
             '__filename' => File.basename(post_path),

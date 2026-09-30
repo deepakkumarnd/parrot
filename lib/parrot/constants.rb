@@ -31,3 +31,10 @@ DEFAULT_OLDER_LINK_TEXT = 'Older posts →'.freeze
 # post_listing `list_format`, `on_post` when it appears as a literal
 # placeholder inside a post's own Markdown body.
 DEFAULT_POST_DATE_FORMAT = { 'on_list' => '%m/%Y', 'on_post' => '%d/%m/%Y' }.freeze
+
+# Post filenames (without .md) that `parrot post` refuses to create and
+# `parrot build` fails on. index*, 404 and about would build to the same
+# public/*.html as a page Parrot generates itself (the index pages,
+# 404.html, about.html); now, post(s) and note(s) are kept free for pages of
+# their own. Case-insensitive, since macOS and Windows filesystems are.
+RESERVED_POST_NAMES = /\A(?:index\d*|404|about|now|posts?|notes?)\z/i
