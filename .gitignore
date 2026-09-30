@@ -21,3 +21,4 @@ blog/
 
 # Incremental-build checksum written into a blog's build directory
 public/.checksum
+*.test.log.*
