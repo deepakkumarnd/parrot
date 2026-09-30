@@ -1,5 +1,13 @@
 #!/bin/sh
 
+echo "Running RuboCop..."
+bundle exec rubocop
+
+if [ $? -ne 0 ]; then
+  echo "RuboCop failed. Fix the offenses (bundle exec rubocop -a) and commit again."
+  exit 1
+fi
+
 echo "Running RSpec..."
 bundle exec rspec
 
