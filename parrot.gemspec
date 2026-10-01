@@ -1,7 +1,7 @@
 require_relative 'lib/parrot/metadata'
 
 Gem::Specification.new do |spec|
-  spec.name          = 'parrot'
+  spec.name          = 'prt'
   spec.version       = Parrot::VERSION
   spec.authors       = ['Deepak Kumar']
   spec.email         = ['deepakkumarnd@gmail.com']

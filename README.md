@@ -8,21 +8,20 @@ Demo: [deepsnapster.com](https://deepsnapster.com) is built with Parrot.
 
 ## Installation
 
-Parrot needs Ruby (developed and tested on 4.0; 3.x should work). Add it to a
-`Gemfile`:
+Parrot needs Ruby (developed and tested on 4.0; 3.x should work). It is
+published on RubyGems as `prt`:
+
+```
+$ gem install prt
+```
+
+That puts the `parrot` command on your `PATH`. Or add it to a `Gemfile`:
 
 ```ruby
-gem 'parrot', git: 'git@github.com:deepakkumarnd/parrot.git'
+gem 'prt'
 ```
 
-then:
-
-```
-$ bundle install
-```
-
-Run it as `bundle exec parrot`, or `gem install` the built gem to get a bare
-`parrot` on your `PATH`.
+then run `bundle install` and use `bundle exec parrot`.
 
 ## Quick start
 
