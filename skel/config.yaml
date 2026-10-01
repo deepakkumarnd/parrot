@@ -1,6 +1,11 @@
 # Settings for the post listing Parrot generates on the index page from
 # everything in views/posts/*.md. There is no views/index.md to hand-edit —
 # the listing is always built from the posts themselves, newest first.
+#
+# Posts with a `category: Name` header also get a listing page per category
+# (category-name.html, then category-name_2.html, … once it outgrows
+# per_page), all linked from categories.html. Those pages use the same
+# group_by, per_page, pager text and list_format as the index.
 post_listing:
   # The index page's <h1>. Set to "" to omit the heading entirely.
   list_title: "Post listing"
@@ -34,6 +39,8 @@ post_listing:
   #                  to a post's <!-- key: value --> header
   #   {post_date}  - the header's `date`, formatted per post_date_format.on_list
   #                  below rather than shown as-authored
+  #   {post_category_tag} - the post's `category` as a link to its category
+  #                  page (class "category-tag"); empty for posts without one
   #   {post_link}  - the post's href, the one field Parrot computes itself
   #                  rather than reading from the header — wrap whichever
   #                  part should be clickable in Markdown link syntax
@@ -43,11 +50,11 @@ post_listing:
   #                  `date`, shown as-is rather than through
   #                  post_date_format.on_list, e.g. {%A, %B %d %Y}
   #
-  # Link just the title (default):
-  #   list_format: "{post_date} ~ [{post_title}]({post_link})"
+  # Link just the title and show the category (default):
+  #   list_format: "{post_date} ~ [{post_title}]({post_link}) {post_category_tag}"
   # Link the whole line instead:
   #   list_format: "[{post_date} ~ {post_title}]({post_link})"
-  list_format: "{post_date} ~ [{post_title}]({post_link})"
+  list_format: "{post_date} ~ [{post_title}]({post_link}) {post_category_tag}"
 
 # How to format a post's header `date` wherever it's shown via the
 # {post_date} token — as opposed to a bare strftime pattern like {%d/%m/%Y},

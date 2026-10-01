@@ -3,6 +3,7 @@ title: About Parrot
 date: 08/09/2026
 lang: en
 tags: parrot, markdown
+category: Guides
 -->
 
 # About Parrot

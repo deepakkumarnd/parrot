@@ -118,7 +118,14 @@ examples of everything below.
 - **`{post_date}`** — a literal `{post_date}` placeholder anywhere in a post's
   body is replaced at build time with its header `date`, formatted per
   `post_date_format.on_post` in `config.yaml` (see "The index page" below).
-  `parrot post` writes new posts with one under the title.
+
+Right under each post's `<h1>`, the build adds a
+`<p class="post-meta">` line with the post's date (per
+`post_date_format.on_post`) and its category as a
+`<a class="category-tag">` link to that category's page. Either part is
+left out when the header doesn't have it. Posts written by older versions of
+`parrot post` have a `_{post_date}_` line under the title; it's replaced by
+this line, so the date isn't shown twice.
 
 Every built post also gets a link back to the index (`<p class="back-link">`) at
 the top of its `<main>`, pointing at `index.html`; style it with the
@@ -129,13 +136,15 @@ the top of its `<main>`, pointing at `index.html`; style it with the
 ## Post header
 
 Each post starts with an HTML comment holding its metadata. `parrot post` writes
-`title`, `date` and `lang`; `description` and `tags` are ones you can add by hand:
+`title`, `date`, `lang` and an empty `category`; `description` and `tags` are
+ones you can add by hand:
 
 ```
 <!--
 title: My new post title
 date: 08/09/2026
 lang: en
+category: Programming
 description: One or two sentences for search results and social cards.
 tags: algorithms, coding
 -->
@@ -151,7 +160,8 @@ the tags are listed at the bottom of the post as
 `<p class="post-tags">Tags: <span class="tag">algorithms</span> …</p>` (style it
 with `.post-tags` / `.tag`), and emitted as `article:tag` meta tags and the
 JSON-LD `keywords`. `{post_tags}` in `list_format` shows them on the index as
-written. Set your site's URL once in `views/layout.html.erb` — the
+written. `category` is optional and takes one name per post; see "Categories"
+below. Set your site's URL once in `views/layout.html.erb` — the
 `<meta property="og:url">` and `<link rel="canonical">` tags — and Parrot
 rewrites both per page, appending the built file's path
 (`https://example.com/post1.html`, `https://example.com/` for the index).
@@ -197,7 +207,7 @@ post_listing:
   list_title: "Post listing"                         # the index page's <h1>; "" omits it
   back_link_text: "← Back to all posts"               # the link atop every post; "" omits it
   group_by: none                                      # none | year | month
-  list_format: "{post_date} ~ [{post_title}]({post_link})"
+  list_format: "{post_date} ~ [{post_title}]({post_link}) {post_category_tag}"
 
 post_date_format:
   on_list: "%m/%Y"     # {post_date} inside list_format above
@@ -214,6 +224,9 @@ post_date_format:
   `<!-- key: value -->` header.
 - `{post_date}` — the header's `date`, formatted per `post_date_format.on_list`
   rather than shown as-authored.
+- `{post_category_tag}` — the post's `category` as a `<a class="category-tag">`
+  link to its category page; empty for a post without one. Leave it out of
+  `list_format` to hide categories in listings.
 - `{post_link}` — the post's href, the one field Parrot computes itself rather
   than reading from the header. Wrap whichever part should be clickable in
   Markdown link syntax yourself: `[{post_title}]({post_link})` links just the
@@ -230,6 +243,25 @@ and as a literal `{post_date}` placeholder inside a post's own Markdown body
 `config.yaml` is optional; a missing file, section, or key falls back to the
 defaults shown above.
 
+## Categories
+
+Give a post one category in its header (`category: Ruby`) and the build adds:
+
+- **`category-ruby.html`**, listing that category's posts newest first. It uses
+  the same `list_format`, `group_by` and pager as the index. Once a category
+  has more posts than `per_page`, the listing continues on
+  `category-ruby_2.html`, `category-ruby_3.html`, and so on.
+- **`categories.html`**, linked from the layout's nav, listing every category
+  with its post count (`<ul class="category-list">`).
+- A link to the category under the post's title, and in listings through
+  `{post_category_tag}`.
+
+Page names come from the category's name, lowercased, with spaces as hyphens and
+anything other than letters, digits and hyphens dropped. Names that end up the
+same ("C++" and "C") share one page, and the build warns about it. A post can't
+be named `category`, `categories`, or after a category page that the build
+writes (`category-ruby.md`). Category pages are listed in `sitemap.xml`.
+
 ## How `serve` rebuilds
 
 - On startup Parrot hashes every source file. If the combined checksum differs
@@ -239,9 +271,9 @@ defaults shown above.
 - While running, each saved file rebuilds only what it affects: a single post,
   a new/removed post, `views/404.md`, `views/about.md`, the compiled CSS, `app.js`, or a copied
   image. Because the index is generated from `views/posts/*.md`, adding,
-  removing or editing a post also rebuilds the index (along with
-  `sitemap.xml` and `feed.xml`); editing `config.yaml` rebuilds the index,
-  `sitemap.xml` and every post, since it can affect both the listing and each post's
+  removing or editing a post also rebuilds the index and category pages (along
+  with `sitemap.xml` and `feed.xml`); editing `config.yaml` rebuilds the index,
+  category pages, `sitemap.xml` and every post, since it can affect both the listing and each post's
   `{post_date}` placeholder. Editing `views/layout.html.erb` rebuilds
   everything.
 - `public/.checksum` is regenerated build state. It is gitignored and must not
@@ -270,8 +302,8 @@ optional `title`/`description`/`lang` header as a post, is listed in the
 sitemap, and stays out of the index listing and the feed. Delete the file (and
 its nav link) if you don't want an About page.
 
-`about`, `404`, `index`, `index2`, `index3`, …, `now`, `post`, `posts`, `note`
-and `notes` are reserved post names — the first few would overwrite Parrot's
+`about`, `404`, `index`, `index2`, `index3`, …, `categories`, `category`, `now`,
+`post`, `posts`, `note` and `notes` are reserved post names — the first few would overwrite Parrot's
 own pages, the rest are kept free for pages of their own. `parrot post` refuses
 such a title, and `parrot build` fails if one is in `views/posts/`.
 

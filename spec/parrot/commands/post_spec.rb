@@ -39,9 +39,10 @@ describe Parrot::Commands do
       expect(File.exist?(post_path)).to be true
 
       body = File.read(post_path)
-      expect(body).to include("<!--\ntitle: My First Post!\ndate: #{Date.today.strftime('%d/%m/%Y')}\nlang: en\n-->")
+      expect(body).to include("<!--\ntitle: My First Post!\ndate: #{Date.today.strftime('%d/%m/%Y')}\nlang: en\ncategory:\n-->")
       expect(body).to include('# {post_title}')
-      expect(body).to include('{post_date}')
+      # the build adds the date under the title itself now
+      expect(body).not_to include('{post_date}')
     end
 
     it 'also accepts the title as a plain quoted argument' do
@@ -49,7 +50,7 @@ describe Parrot::Commands do
       expect(File.exist?('blog/views/posts/a-plain-title.md')).to be true
     end
 
-    %w[About 404 Index index2 ABOUT Now post Posts note NOTES].each do |title|
+    %w[About 404 Index index2 ABOUT Now post Posts note NOTES Category Categories].each do |title|
       it "refuses the reserved title #{title.inspect}" do
         expect { Parrot::Commands::PostCommand.new(['--title', title], config).run }
           .to raise_error(ArgumentError, /is a reserved post name/)
@@ -63,10 +64,12 @@ describe Parrot::Commands do
       Parrot::Commands::PostCommand.new(['--title', 'Index 2'], config).run
       Parrot::Commands::PostCommand.new(['--title', 'Notes on Ruby'], config).run
       Parrot::Commands::PostCommand.new(['--title', 'Nowhere'], config).run
+      Parrot::Commands::PostCommand.new(['--title', 'Category theory'], config).run
       expect(File.exist?('blog/views/posts/about-me.md')).to be true
       expect(File.exist?('blog/views/posts/index-2.md')).to be true
       expect(File.exist?('blog/views/posts/notes-on-ruby.md')).to be true
       expect(File.exist?('blog/views/posts/nowhere.md')).to be true
+      expect(File.exist?('blog/views/posts/category-theory.md')).to be true
     end
 
     it 'refuses to overwrite an existing post' do
