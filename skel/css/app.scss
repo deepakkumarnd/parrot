@@ -1,10 +1,103 @@
 // Write your custom css here
 
+// Simple.css switches themes only via prefers-color-scheme. These let the
+// header toggle (data-theme on <html>) override the system choice either way.
+// The colors mirror simple.css's own light and dark palettes.
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #fff;
+  --accent-bg: #f5f7ff;
+  --text: #212121;
+  --text-light: #585858;
+  --accent: #0d47a1;
+  --accent-hover: #1266e2;
+  --code: #d81b60;
+  --preformatted: #444;
+  --disabled: #efefef;
+
+  img,
+  video {
+    opacity: 1;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #212121;
+  --accent-bg: #2b2b2b;
+  --text: #dcdcdc;
+  --text-light: #ababab;
+  --accent: #ffb300;
+  --accent-hover: #ffe099;
+  --code: #f06292;
+  --preformatted: #ccc;
+  --disabled: #111;
+
+  img,
+  video {
+    opacity: 0.8;
+  }
+}
+
 .site-header {
+  position: relative;
   text-align: center;
   padding: 2.5rem 1rem 2rem;
   margin-bottom: 2rem;
   border-bottom: 1px solid var(--border);
+}
+
+.theme-toggle {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  display: inline-flex;
+  padding: 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-light);
+
+  &:enabled:hover {
+    background: transparent;
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  svg {
+    width: 1.1rem;
+    height: 1.1rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  // Show the theme you'd switch to: a moon in light mode, a sun in dark mode.
+  .icon-sun {
+    display: none;
+  }
+}
+
+@mixin show-sun {
+  .theme-toggle .icon-moon {
+    display: none;
+  }
+
+  .theme-toggle .icon-sun {
+    display: block;
+  }
+}
+
+:root[data-theme="dark"] {
+  @include show-sun;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    @include show-sun;
+  }
 }
 
 .site-name {
