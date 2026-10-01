@@ -7,11 +7,11 @@ category: Guides
 
 # Your second post
 
-This is `views/posts/post2.md`. Edit it, or delete it and drop your own
-`.md` files into `views/posts/` — each one is built into its own page and can
-be listed from `views/index.md`.
+This is `views/posts/sample.md`. Edit it, or delete it and drop your own
+`.md` files into `views/posts/` — each one is built into its own page and
+listed on the index automatically.
 
-For headings, code blocks and LaTeX math, see [About Parrot](#post1.md). This
+For headings, code blocks and LaTeX math, see [About Parrot](#about_parrot.md). This
 post covers the rest of the everyday Markdown.
 
 ## Images

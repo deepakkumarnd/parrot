@@ -8,7 +8,7 @@ Demo: [deepsnapster.com](https://deepsnapster.com) is built with Parrot.
 
 ## Installation
 
-Parrot needs Ruby (developed and tested on 4.0; 3.x should work). It is
+Parrot needs Ruby 3.2 or newer (developed and tested on 4.0). It is
 published on RubyGems as `prt`:
 
 ```
@@ -82,9 +82,9 @@ Parrot uses simple markdown format https://www.markdownguide.org/basic-syntax/ f
 text formatting.
 
 Posts are [kramdown](https://kramdown.gettalong.org/) Markdown with GitHub-style
-fenced code blocks. A fresh blog ships `views/posts/post1.md` (headings, code,
-math) and `views/posts/post2.md` (images, lists, tables, quotes) as worked
-examples of everything below.
+fenced code blocks. A fresh blog ships `views/posts/about_parrot.md` (headings,
+code, math) and `views/posts/sample.md` (images, lists, tables, quotes) as
+worked examples of everything below.
 
 - **Headings** — `#` for the post title, `##` / `###` for sections.
 - **Code** — inline with `` `backticks` ``; fenced blocks tagged with a language
@@ -96,8 +96,10 @@ examples of everything below.
   ```
   ````
 
-  The theme is Monokai. Change `HIGHLIGHT_THEME` in `lib/parrot/constants.rb` to
-  any Rouge theme name (`github`, `gruvbox`, `molokai`, …).
+  The theme is Monokai. It's set by `HIGHLIGHT_THEME` in the gem's
+  `lib/parrot/constants.rb` (any Rouge theme name: `github`, `gruvbox`,
+  `molokai`, …), so changing it means editing the installed gem or a checkout
+  of it — it isn't a `config.yaml` setting yet.
 - **Math** — LaTeX between `$$ … $$` is rendered by MathJax: inline when it sits
   inside a line, a display block when it's on its own line.
 - **Tables** — GitHub-style pipe tables render to HTML:
@@ -112,8 +114,11 @@ examples of everything below.
   ```
   > Blockquotes are good for asides and pull quotes.
   ```
-- **Internal links** — `[text](#post2.md)` is rewritten to `post2.html` during
+- **Internal links** — `[text](#sample.md)` is rewritten to `sample.html` during
   the build, so link posts to each other by their Markdown filename.
+- **`{post_title}`** — a literal `{post_title}` anywhere in a post's body is
+  replaced with its header `title`. `parrot post` starts every post with
+  `# {post_title}`, so the heading follows the header.
 - **`{post_date}`** — a literal `{post_date}` placeholder anywhere in a post's
   body is replaced at build time with its header `date`, formatted per
   `post_date_format.on_post` in `config.yaml` (see "The index page" below).
@@ -127,7 +132,8 @@ left out when the header doesn't have it. Posts written by older versions of
 this line, so the date isn't shown twice.
 
 Every built post also gets a link back to the index (`<p class="back-link">`) at
-the top of its `<main>`, pointing at `index.html`; style it with the
+the top of its `<main>`, pointing at the index page that lists it
+(`index.html`, or `index2.html`, … once the index is paginated); style it with the
 `.back-link` class in your CSS. The index page doesn't get one. Its text is
 `config.yaml`'s `post_listing.back_link_text` (default "← Back to all posts";
 "" omits the link — see "The index page" below).
@@ -180,7 +186,18 @@ in three forms — `images/favicon.ico`, `images/favicon.svg` and
 `images/apple-touch-icon.png` (swap in your own). Any `images/…` file referenced
 from an `<img>` or `<link>` is copied into the build.
 
+## Light and dark theme
+
+The skeleton follows the visitor's system light/dark setting, and the header has
+a toggle button (`.theme-toggle`) to override it. The choice is saved in
+`localStorage` and applied by a small inline script in `views/layout.html.erb`
+before first paint, so there's no flash of the wrong theme. The toggle sets
+`data-theme="light"` or `"dark"` on `<html>`; the matching colors are in
+`css/app.scss` and the toggle logic is in `javascripts/app.js`. Remove the
+button from the layout if you only want the system setting.
+
 ## Draft mode
+
 ```
 <!--
 title: My new post title
@@ -191,9 +208,10 @@ draft: true
 -->
 ```
 
-If `draft: true` is set in the header then the post becomes a draft, the draft post won't be published. By default draft mode is set to false.
-`parrot build` leaves drafts out of the index listing, `sitemap.xml` and
-`feed.xml` too; `parrot serve` builds and lists them so you can preview them.
+Add `draft: true` to a post's header to keep it unpublished (posts aren't
+drafts by default). `parrot build` skips drafts entirely — no page, and nothing
+in the index listing, `sitemap.xml` or `feed.xml`. `parrot serve` builds and
+lists them so you can preview them.
 
 ## The index page
 
@@ -203,9 +221,12 @@ rendered is controlled by `config.yaml` at the blog's root:
 
 ```yaml
 post_listing:
-  list_title: "Post listing"                         # the index page's <h1>; "" omits it
+  list_title: "Post listing"                         # heading above the listing (page 1 only); "" omits it
   back_link_text: "← Back to all posts"               # the link atop every post; "" omits it
   group_by: none                                      # none | year | month
+  # per_page: 10                                      # posts per index page; unset or 0 = one page
+  newer_link_text: "← Newer posts"                    # pager links; "" omits that link
+  older_link_text: "Older posts →"
   list_format: "{post_date} ~ [{post_title}]({post_link}) {post_category_tag}"
 
 post_date_format:
@@ -215,6 +236,12 @@ post_date_format:
 
 **`group_by`** wraps the listing in `## <year>` or `## <Month Year>` sections
 (newest first); `none` is a flat list.
+
+**`per_page`** splits the listing once there are more posts than that:
+`index.html` holds the newest posts, then `index2.html`, `index3.html`, and so
+on, each with a pager at the bottom using `newer_link_text` / `older_link_text`.
+Every index page is listed in `sitemap.xml`, and a stale trailing page is
+removed when the post count drops.
 
 **`list_format`** is a Markdown template applied to each post:
 
@@ -327,13 +354,30 @@ and delete `./blog`.
 GitHub Actions (`.github/workflows/ci.yml`) runs RSpec and RuboCop on every pull
 request and on pushes to `master`.
 
+## Releasing
+
+The gem is published on RubyGems as `prt` (the name `parrot` belongs to an
+unrelated gem). Releases use Bundler's gem tasks:
+
+1. Bump the version and commit. `bundle exec rake bump_patch_version` bumps the
+   patch number (0.3.0 → 0.3.1) in `lib/parrot/metadata.rb` and
+   `spec/parrot/metadata_spec.rb` and runs that spec; for a minor or major
+   bump, edit both files by hand.
+2. Run `bundle exec rake release`. It refuses to run with uncommitted changes.
+   It builds `pkg/prt-<version>.gem`, tags `v<version>`, pushes `master` and the
+   tag, and pushes the gem to RubyGems. You need to be signed in (`gem signin`)
+   and will be asked for your MFA code.
+
+`bundle exec rake build` builds the gem without publishing it, and
+`bundle exec rake install` installs it locally.
+
 ## Contributing
 
 1. Fork it
-2. Create your feature branch (`git checkout -b my-new-feature`)
-3. Commit your changes (`git commit -am 'Add some feature'`)
-4. Push to the branch (`git push origin my-new-feature`)
-5. Open a Pull Request
+2. Create a branch named after its GitHub issue: `feat/<issue>-<short-name>`
+   for features, `fix/<issue>-<short-name>` for bugs (e.g. `feat/2-post-tags`)
+3. Commit your changes
+4. Push the branch and open a Pull Request
 
 ## License
 

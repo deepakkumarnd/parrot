@@ -60,4 +60,4 @@ $$
 ## Links between posts
 
 Link to another post by its Markdown filename and Parrot rewrites it to the
-built page at build time: [read the next post](#post2.md).
+built page at build time: [read the next post](#sample.md).
