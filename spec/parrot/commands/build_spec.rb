@@ -551,11 +551,161 @@ describe Parrot::Commands do
       end
     end
 
+    context 'post categories' do
+      let(:build_config) { Parrot::Config.new(File.join(Dir.pwd, 'blog'), Logger.new(File::NULL)) }
+      let(:command) { Parrot::Commands::BuildCommand.new([], build_config) }
+
+      def write_post(name, title, date, category = nil)
+        header = "title: #{title}\ndate: #{date}\n"
+        header << "category: #{category}\n" if category
+        File.write("blog/views/posts/#{name}.md", "<!--\n#{header}-->\n\n# #{title}\n\nBody text.\n")
+      end
+
+      def main_of(file)
+        File.read("blog/public/#{file}")[%r{<main>.*?</main>}m]
+      end
+
+      before do
+        write_post('ruby-old', 'Old Ruby', '01/01/2024', 'Ruby')
+        write_post('ruby-new', 'New Ruby', '01/01/2025', 'Ruby')
+        write_post('web', 'Web things', '01/06/2025', 'Web Dev')
+      end
+
+      it 'lists only that category\'s posts, newest first, under its name' do
+        command.run
+        main = main_of('category-ruby.html')
+
+        expect(main).to include('<h3>Ruby</h3>')
+        expect(main).not_to include('web.html')
+        expect(main).not_to include('sample.html')
+        expect(main.index('ruby-new.html')).to be < main.index('ruby-old.html')
+        expect(File.read('blog/public/category-ruby.html')).to include('<title>Ruby posts</title>')
+      end
+
+      it 'names pages after the slugified category' do
+        command.run
+        expect(File.exist?('blog/public/category-web-dev.html')).to be true
+      end
+
+      it 'paginates a category past per_page, with a pager between its pages' do
+        File.write('blog/config.yaml', "post_listing:\n  per_page: 1\n")
+        command.run
+
+        page1 = main_of('category-ruby.html')
+        page2 = main_of('category-ruby_2.html')
+        expect(page1).to include('ruby-new.html')
+        expect(page1).to include('<a href="category-ruby_2.html">Older posts →</a>')
+        expect(page2).to include('ruby-old.html')
+        expect(page2).to include('<a href="category-ruby.html">← Newer posts</a>')
+        expect(page2).to include('<h3>Ruby</h3>')
+        expect(File.exist?('blog/public/category-ruby_3.html')).to be false
+      end
+
+      it 'lists every category with its post count on categories.html' do
+        command.run
+        main = main_of('categories.html')
+
+        expect(main).to include('<a href="category-guides.html">Guides</a> (2)')
+        expect(main).to include('<a href="category-ruby.html">Ruby</a> (2)')
+        expect(main).to include('<a href="category-web-dev.html">Web Dev</a> (1)')
+      end
+
+      it 'still writes categories.html when no post has a category' do
+        Dir['blog/views/posts/*.md'].each { |path| File.write(path, File.read(path).gsub(/^category:.*\n/, '')) }
+        command.run
+
+        expect(main_of('categories.html')).to include('No categories yet.')
+        expect(Dir['blog/public/category-*.html']).to be_empty
+      end
+
+      it 'puts the date and a category link right after the post title' do
+        command.run
+        expect(main_of('ruby-new.html')).to include(
+          '<h1>New Ruby</h1>' \
+          "\n" \
+          '<p class="post-meta"><time datetime="2025-01-01">01/01/2025</time> · ' \
+          '<a class="category-tag" href="category-ruby.html">Ruby</a></p>'
+        )
+      end
+
+      it 'shows just the date for a post without a category, and nothing without either' do
+        write_post('plain', 'Plain', '01/02/2025')
+        File.write('blog/views/posts/bare.md', "# Bare\n\nBody text.\n")
+        command.run
+
+        expect(main_of('plain.html')).to include('<p class="post-meta"><time datetime="2025-02-01">01/02/2025</time></p>')
+        expect(main_of('bare.html')).not_to include('post-meta')
+      end
+
+      it 'replaces an old _{post_date}_ line instead of showing the date twice' do
+        File.write('blog/views/posts/story.md',
+                   "<!--\ntitle: A story\ndate: 08/09/2026\ncategory: Fiction\n-->\n\n# A story\n\n_{post_date}_\n\nBody.\n")
+        command.run
+
+        # the header comment is copied into <main> as-is, so leave it out
+        main = main_of('story.html').gsub(/<!--.*?-->/m, '')
+        expect(main.scan('08/09/2026').length).to eq(1)
+        expect(main).to include('class="category-tag" href="category-fiction.html"')
+      end
+
+      it 'shows a category tag in the index listing by default' do
+        command.run
+        expect(main_of('index.html')).to include('<a href="category-ruby.html" class="category-tag">Ruby</a>')
+      end
+
+      it 'leaves the tag out when list_format drops {post_category_tag}' do
+        File.write('blog/config.yaml', "post_listing:\n  list_format: \"[{post_title}]({post_link})\"\n")
+        command.run
+        expect(main_of('index.html')).not_to include('category-tag')
+        expect(main_of('category-ruby.html')).not_to include('category-tag')
+      end
+
+      it 'lists categories.html and every category page in the sitemap' do
+        File.write('blog/config.yaml', "post_listing:\n  per_page: 1\n")
+        command.run
+
+        sitemap = File.read('blog/public/sitemap.xml')
+        expect(sitemap).to include('<loc>https://example.com/categories.html</loc>')
+        expect(sitemap).to include("<loc>https://example.com/category-ruby.html</loc>\n    <lastmod>2025-01-01</lastmod>")
+        expect(sitemap).to include('<loc>https://example.com/category-ruby_2.html</loc>')
+      end
+
+      it 'removes a category\'s pages once the watcher sees its last post move away' do
+        command.run
+        write_post('web', 'Web things', '01/06/2025', 'Ruby')
+        command.build('views/posts/web.md')
+
+        expect(File.exist?('blog/public/category-web-dev.html')).to be false
+        expect(main_of('category-ruby.html')).to include('web.html')
+        expect(main_of('categories.html')).not_to include('Web Dev')
+      end
+
+      it 'shares one page between names that slugify the same' do
+        write_post('cpp', 'C plus plus', '01/03/2025', 'Web-Dev')
+        command.run
+        main = main_of('category-web-dev.html')
+
+        expect(main).to include('web.html')
+        expect(main).to include('cpp.html')
+      end
+
+      it 'fails the build when a post is named like a category page' do
+        File.write('blog/views/posts/category-ruby.md', "# Clash\n")
+        expect { command.run }.to raise_error(%r{Reserved post filename: views/posts/category-ruby\.md})
+      end
+
+      it 'builds a post named category-<something> when no such category exists' do
+        File.write('blog/views/posts/category-theory.md', "# Category theory\n")
+        expect { command.run }.not_to raise_error
+        expect(File.exist?('blog/public/category-theory.html')).to be true
+      end
+    end
+
     context 'reserved post filenames' do
       let(:build_config) { Parrot::Config.new(File.join(Dir.pwd, 'blog'), Logger.new(File::NULL)) }
       let(:command) { Parrot::Commands::BuildCommand.new([], build_config) }
 
-      %w[about.md 404.md index.md index3.md About.md now.md post.md posts.md note.md notes.md].each do |name|
+      %w[about.md 404.md index.md index3.md About.md now.md post.md posts.md note.md notes.md categories.md category.md].each do |name|
         it "fails the build on views/posts/#{name} before writing anything" do
           command.run
           File.write("blog/views/posts/#{name}", "# Clash\n")

@@ -12,13 +12,15 @@ HIGHLIGHT_THEME = 'monokai'.freeze
 # `{post_link}` is the one field Parrot computes itself rather than
 # reading from the header: the post's href. Wrap whichever span should
 # be clickable in ordinary Markdown link syntax, [...]({post_link}).
-# This default links just the title:
-#   "{post_date} ~ [{post_title}]({post_link})"
+# `{post_category_tag}` is the post's header `category` as a link to that
+# category's listing (`<a class="category-tag">`), or nothing when the post
+# has no category. This default links the title and shows that tag:
+#   "{post_date} ~ [{post_title}]({post_link}) {post_category_tag}"
 # To make the whole line a link instead:
 #   "[{post_date} ~ {post_title}]({post_link})"
 # A bare strftime format string like {%d/%m/%Y} also still works here,
 # shown exactly as formatted rather than through post_date_format.
-DEFAULT_LIST_FORMAT = '{post_date} ~ [{post_title}]({post_link})'.freeze
+DEFAULT_LIST_FORMAT = '{post_date} ~ [{post_title}]({post_link}) {post_category_tag}'.freeze
 DEFAULT_GROUP_BY = 'none'.freeze
 DEFAULT_LIST_TITLE = 'Post listing'.freeze
 DEFAULT_BACK_LINK_TEXT = '← Back to all posts'.freeze
@@ -35,6 +37,9 @@ DEFAULT_POST_DATE_FORMAT = { 'on_list' => '%m/%Y', 'on_post' => '%d/%m/%Y' }.fre
 # Post filenames (without .md) that `parrot post` refuses to create and
 # `parrot build` fails on. index*, 404 and about would build to the same
 # public/*.html as a page Parrot generates itself (the index pages,
-# 404.html, about.html); now, post(s) and note(s) are kept free for pages of
-# their own. Case-insensitive, since macOS and Windows filesystems are.
-RESERVED_POST_NAMES = /\A(?:index\d*|404|about|now|posts?|notes?)\z/i
+# 404.html, about.html, categories.html); category, now, post(s) and note(s)
+# are kept free for pages of their own. A post named like a category page
+# (category-<slug>.html) is caught by the build instead, since those names
+# depend on which categories exist. Case-insensitive, since macOS and
+# Windows filesystems are.
+RESERVED_POST_NAMES = /\A(?:index\d*|404|about|categor(?:y|ies)|now|posts?|notes?)\z/i

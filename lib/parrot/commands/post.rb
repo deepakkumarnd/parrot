@@ -20,14 +20,14 @@ module Parrot
         raise ArgumentError, USAGE if @title.empty?
         raise ArgumentError if @app_root.nil?
 
-        @slug = slugify(@title)
+        @slug = Helpers.slugify(@title)
       end
 
       def run
         raise ArgumentError, "Title has no letters or digits to build a filename from.\n#{USAGE}" if slug.empty?
         if slug.match?(RESERVED_POST_NAMES)
           raise ArgumentError,
-                "\"#{slug}\" is a reserved post name (index*, 404, about, now, post(s), note(s)). " \
+                "\"#{slug}\" is a reserved post name (index*, 404, about, categories, now, post(s), note(s)). " \
                 "Pick a different title.\n#{USAGE}"
         end
 
@@ -70,22 +70,13 @@ module Parrot
           title: #{title}
           date: #{header_date}
           lang: en
+          category:
           -->
 
           # {post_title}
 
-          _{post_date}_
-
           Write your post here.
         MARKDOWN
-      end
-
-      def slugify(text)
-        text.downcase
-            .gsub(/[^a-z0-9\s-]/, '')
-            .strip
-            .gsub(/\s+/, '-')
-            .gsub(/-+/, '-')
       end
     end
   end

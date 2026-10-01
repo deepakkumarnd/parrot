@@ -78,6 +78,73 @@ module Parrot
         config.logger.info "Built #{output}"
       end
 
+      # Builds category-<slug>.html for every category in use, plus
+      # category-<slug>_2.html, _3, … once a category has more posts than
+      # post_listing's per_page. Each lists just that category's posts, newest
+      # first, with the same list_format, group_by and pager as the index.
+      # Any category-*.html this build didn't write (a category no post uses
+      # any more, or a trailing page it no longer needs) is removed, unless
+      # it's a post's own page (category-theory.md when no such category
+      # exists).
+      def build_category_pages
+        keep = sorted_posts_metadata.map { |meta| meta['__filename'].sub('.md', '.html') }
+        keep += posts_by_category.flat_map do |slug, category|
+          pages = paginated_posts(category[:posts])
+          pages.each_with_index.map do |posts_meta, index|
+            build_category_file(slug, category[:name], index + 1, posts_meta, pages.length)
+          end
+        end
+
+        Dir[File.join(build_path, 'category-*.html')].each do |path|
+          File.delete(path) unless keep.include?(File.basename(path))
+        end
+      end
+
+      # Writes one category listing page and returns its filename. Every page
+      # repeats the category's name as its heading, so a visitor several
+      # pages in still knows which category they're browsing.
+      def build_category_file(slug, name, page_number, posts_meta, total_pages)
+        layout = Tilt.new("#{app_root}/views/layout.html.erb")
+        filename = category_filename(slug, page_number)
+
+        markdown = "### #{escape_markdown(name)}\n\n#{render_post_listing(posts_meta)}\n"
+        pager = pager_markdown(page_number, total_pages, ->(number) { category_filename(slug, number) })
+        markdown << "\n#{pager}\n" unless pager.empty?
+
+        html = update_internal_links(layout.render { markdown_string(markdown).render })
+        copy_image_assets(html)
+
+        title = page_number == 1 ? "#{name} posts" : "#{name} posts (page #{page_number})"
+        meta = { 'title' => title, 'description' => "Posts filed under #{name}." }
+        apply_page_meta(html, filename, meta, kind: :category)
+
+        output = File.join(build_path, filename)
+        File.write(output, html)
+        config.logger.info "Built #{output}"
+        filename
+      end
+
+      # Builds public/categories.html, the page the layout's nav links to:
+      # every category in use, by name, linking its listing, with its post
+      # count. Written even when no post has a category yet, so that nav link
+      # never 404s.
+      def build_categories_page
+        entries = posts_by_category.map do |slug, category|
+          "- [#{escape_markdown(category[:name])}](#{category_filename(slug, 1)}) (#{category[:posts].length})"
+        end
+        listing = entries.empty? ? 'No categories yet.' : "#{entries.join("\n")}\n{: .category-list}"
+
+        layout = Tilt.new("#{app_root}/views/layout.html.erb")
+        html = update_internal_links(layout.render { markdown_string("### Categories\n\n#{listing}\n").render })
+        copy_image_assets(html)
+        meta = { 'title' => 'Categories', 'description' => 'Every category on this blog.' }
+        apply_page_meta(html, 'categories.html', meta, kind: :category)
+
+        output = File.join(build_path, 'categories.html')
+        File.write(output, html)
+        config.logger.info "Built #{output}"
+      end
+
       # Rebuilds every post, each linking its back-link at whichever index
       # page it currently falls on — which can shift for posts far from the
       # top whenever pagination is active and a post is added, removed, or
@@ -159,6 +226,7 @@ module Parrot
         html = update_internal_links(text)
         copy_image_assets(html)
         html = inject_scripts(html)
+        html = inject_post_meta(html, meta)
         html = inject_back_link(html, page_number)
         html = inject_tags(html, post_tags(meta))
 
@@ -213,6 +281,54 @@ module Parrot
         paragraph.add_child(link)
 
         main.prepend_child(paragraph)
+        html
+      end
+
+      # Puts a `<p class="post-meta">` line right after the post's <h1> (or at
+      # the top of its <main> when it has none): its header `date`, formatted
+      # per post_date_format.on_post, and its `category` as a
+      # `<a class="category-tag">` link to that category's listing. Either is
+      # left out when the header doesn't have it, and the line when neither is
+      # there. A paragraph right after the <h1> holding nothing but that same
+      # date — the `_{post_date}_` line `parrot post` used to write — is
+      # replaced, so the date isn't shown twice.
+      def inject_post_meta(html, meta)
+        date = meta['__date']&.strftime(post_date_format('on_post'))
+        href = category_href(meta)
+        return html if date.nil? && href.nil?
+
+        main = html.at('main')
+        return html unless main
+
+        paragraph = Nokogiri::XML::Node.new('p', html)
+        paragraph['class'] = 'post-meta'
+
+        if date
+          time = Nokogiri::XML::Node.new('time', html)
+          time['datetime'] = meta['__date'].iso8601
+          time.content = date
+          paragraph.add_child(time)
+        end
+
+        if href
+          paragraph.add_child(Nokogiri::XML::Text.new(' · ', html)) if date
+          link = Nokogiri::XML::Node.new('a', html)
+          link['class'] = 'category-tag'
+          link['href'] = href
+          link.content = post_category(meta)
+          paragraph.add_child(link)
+        end
+
+        heading = main.at('h1')
+        following = heading&.next_element
+        if heading.nil?
+          main.prepend_child(paragraph)
+        elsif date && following&.name == 'p' && following.text.strip == date
+          following.replace(paragraph)
+        else
+          heading.add_next_sibling(paragraph)
+        end
+
         html
       end
 
@@ -287,11 +403,14 @@ module Parrot
 
       def run
         config.logger.info "Building application at #{app_root}"
+        reset_posts_metadata
         check_reserved_post_names!
         FileUtils.rm_rf('public')
         FileUtils.mkdir('public')
         build_index_page
         build_posts
+        build_category_pages
+        build_categories_page
         build_404_page
         build_about_page
         build_sitemap
@@ -299,9 +418,12 @@ module Parrot
         build_feed
         compile_css
         compile_js
+      ensure
+        reset_posts_metadata
       end
 
-      # Writes public/sitemap.xml listing the index and every post, each URL
+      # Writes public/sitemap.xml listing the index, every post and category
+      # page, and the about page, each URL
       # built from the layout's base URL. Posts carry a <lastmod> from their
       # header `date`; the index carries the newest post's date. Skipped when
       # the layout declares no base URL.
@@ -328,6 +450,14 @@ module Parrot
         end
 
         entries << { loc: "#{base}/about.html" } if File.exist?(File.join(app_root, 'views', 'about.md'))
+
+        entries << { loc: "#{base}/categories.html", lastmod: newest }
+        posts_by_category.each do |slug, category|
+          lastmod = category[:posts].filter_map { |meta| iso_date(meta['date']) }.max
+          paginated_posts(category[:posts]).length.times do |index|
+            entries << { loc: "#{base}/#{category_filename(slug, index + 1)}", lastmod: lastmod }
+          end
+        end
 
         xml = +%(<?xml version="1.0" encoding="UTF-8"?>\n)
         xml << %(<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n)
@@ -415,6 +545,7 @@ module Parrot
         config.logger.info "Building changed file at #{file}"
         path = File.expand_path(file.to_s, app_root)
         relative = path.sub(%r{\A#{Regexp.escape(app_root)}/?}, '')
+        reset_posts_metadata
 
         FileUtils.mkdir_p(build_path)
 
@@ -424,6 +555,8 @@ module Parrot
           # feeds the sitemap, robots.txt and feed too.
           build_index_page
           build_posts
+          build_category_pages
+          build_categories_page
           build_404_page
           build_about_page
           build_sitemap
@@ -438,9 +571,11 @@ module Parrot
           # post_listing settings change the index; post_date_format also
           # affects the {post_date} placeholder inside every post's own body.
           # per_page changes how many index pages there are, so the sitemap
-          # listing them is rewritten too.
+          # listing them is rewritten too. Category pages share all of that.
           build_index_page
           build_posts
+          build_category_pages
+          build_categories_page
           build_sitemap
         when %r{\Aviews/posts/[^/]+\.md\z}
           check_reserved_post_names!
@@ -448,9 +583,12 @@ module Parrot
           # A post was added, removed or had its date/title/summary changed,
           # any of which can change the generated index listing and, when
           # pagination is active, shift other posts onto a different index
-          # page — so every post is rebuilt to keep back-links correct.
+          # page — so every post is rebuilt to keep back-links correct. Its
+          # category may have changed too, so category pages are rebuilt.
           build_posts
           build_index_page
+          build_category_pages
+          build_categories_page
           build_sitemap
           build_feed
         when %r{\Acss/.+\.(scss|css)\z}
@@ -463,22 +601,31 @@ module Parrot
         else
           config.logger.info "No build strategy for #{relative}, skipping"
         end
+      ensure
+        reset_posts_metadata
       end
 
       private
 
       # Fails the build, before anything is written, when a post's filename
-      # is one of RESERVED_POST_NAMES and so would overwrite (or be
+      # is one of RESERVED_POST_NAMES, or the name of a category page this
+      # build will write (category-ruby.html), and so would overwrite (or be
       # overwritten by) a page Parrot generates itself.
       def check_reserved_post_names!
+        category_pages = posts_by_category.flat_map do |slug, category|
+          (1..paginated_posts(category[:posts]).length).map { |number| category_filename(slug, number).delete_suffix('.html') }
+        end
+
         clashes = Dir["#{app_root}/views/posts/*.md"].select do |post_path|
-          File.basename(post_path, '.md').match?(RESERVED_POST_NAMES)
+          name = File.basename(post_path, '.md')
+          name.match?(RESERVED_POST_NAMES) || category_pages.include?(name.downcase)
         end
         return if clashes.empty?
 
         names = clashes.map { |post_path| "views/posts/#{File.basename(post_path)}" }.join(', ')
-        raise "Reserved post filename: #{names}. index*, 404, about, now, post(s) and note(s) " \
-              "can't be used as post names; rename the post to build."
+        raise "Reserved post filename: #{names}. index*, 404, about, categories, category, now, post(s), " \
+              "note(s) and category page names (category-<name>) can't be used as post names; " \
+              'rename the post to build.'
       end
 
       # The posts this build writes out: every views/posts/*.md, minus drafts
@@ -524,13 +671,64 @@ module Parrot
         meta['tags'].to_s.split(',').map(&:strip).reject(&:empty?).uniq
       end
 
+      # A post's header `category`, trimmed, or nil when it has none.
+      def post_category(meta)
+        category = meta['category'].to_s.strip
+        category.empty? ? nil : category
+      end
+
+      # The category listing a post's `category` links to ("category-ruby.html"),
+      # or nil when it has none, or one with no letters or digits to name a
+      # page after.
+      def category_href(meta)
+        category = post_category(meta)
+        slug = category && Helpers.slugify(category)
+        slug.nil? || slug.empty? ? nil : category_filename(slug, 1)
+      end
+
+      # "category-ruby.html" for page 1, "category-ruby_2.html", … after that.
+      # Slugs never contain "_", so a page number can't be mistaken for part of
+      # another category's name ("web3" vs page 3 of "web").
+      def category_filename(slug, page_number)
+        page_number == 1 ? "category-#{slug}.html" : "category-#{slug}_#{page_number}.html"
+      end
+
+      # Every category in use as { slug => { name:, posts: } }, sorted by name,
+      # each category's posts newest first. Names that slugify the same ("C++"
+      # and "C") share one listing under the first name seen, with a warning;
+      # a name with no letters or digits gets no listing at all.
+      def posts_by_category
+        @posts_by_category ||= begin
+          categories = {}
+
+          sorted_posts_metadata.each do |meta|
+            name = post_category(meta)
+            next unless name
+
+            slug = Helpers.slugify(name)
+            if slug.empty?
+              config.logger.warn "Category #{name.inspect} in #{meta['__filename']} has no letters or digits, skipping it"
+              next
+            end
+
+            category = categories[slug] ||= { name: name, posts: [] }
+            if category[:name] != name
+              config.logger.warn "Category #{name.inspect} in #{meta['__filename']} is listed under #{category[:name].inspect}"
+            end
+            category[:posts] << meta
+          end
+
+          categories.sort_by { |_slug, category| category[:name].downcase }.to_h
+        end
+      end
+
       # Sets the per-page <html lang>, <title>, <meta property="og:*"> and
       # <link rel="canonical"> on the built HTML, and turns a relative og:image
       # path into an absolute URL (copying the file into the build). The site's
       # base URL comes from the layout (its canonical/og:url tag); the generated
       # file's path is appended so each page points at itself. `meta` is the
-      # post's header Hash (empty for the index). `kind` is :index, :post or
-      # :about; only a post gets article metadata.
+      # post's header Hash (empty for the index). `kind` is :index, :post,
+      # :about or :category; only a post gets article metadata.
       def apply_page_meta(html, output_name, meta = {}, kind: index_page?(output_name) ? :index : :post)
         title = meta['title']
 
@@ -603,7 +801,7 @@ module Parrot
 
         data = {
           '@context' => 'https://schema.org',
-          '@type' => { post: 'BlogPosting', about: 'AboutPage', index: 'WebSite' }.fetch(kind),
+          '@type' => { post: 'BlogPosting', about: 'AboutPage', category: 'CollectionPage', index: 'WebSite' }.fetch(kind),
           'url' => page_url
         }
 
@@ -624,7 +822,7 @@ module Parrot
           author = meta_content(html, 'meta[name="author"]')
           data['author'] = { '@type' => 'Person', 'name' => author } if author
           data['publisher'] = { '@type' => 'Organization', 'name' => site_name } if site_name
-        when :about
+        when :about, :category
           data['name'] = html.at('head title')&.text
           data['description'] = description if description
         else
@@ -895,14 +1093,16 @@ module Parrot
       # linking to the adjacent page(s); "" when there's nothing to link to
       # (a single-page site, or the newer/older side is explicitly disabled
       # via an empty post_listing.newer_link_text/older_link_text).
-      def pager_markdown(page_number, total_pages)
+      # `filename` maps a page number to its file: index pages by default,
+      # category pages pass their own.
+      def pager_markdown(page_number, total_pages, filename = method(:index_filename))
         settings = post_listing_settings
         newer_text = settings.fetch('newer_link_text', DEFAULT_NEWER_LINK_TEXT)
         older_text = settings.fetch('older_link_text', DEFAULT_OLDER_LINK_TEXT)
 
         links = []
-        links << "[#{newer_text}](#{index_filename(page_number - 1)})" if page_number > 1 && !newer_text.to_s.empty?
-        links << "[#{older_text}](#{index_filename(page_number + 1)})" if page_number < total_pages && !older_text.to_s.empty?
+        links << "[#{newer_text}](#{filename.call(page_number - 1)})" if page_number > 1 && !newer_text.to_s.empty?
+        links << "[#{older_text}](#{filename.call(page_number + 1)})" if page_number < total_pages && !older_text.to_s.empty?
         return '' if links.empty?
 
         "#{links.join(' ~ ')}\n{: .pagination}"
@@ -930,15 +1130,27 @@ module Parrot
 
       # Every post's header metadata plus its parsed date and source filename,
       # newest first. Undated posts (or posts with an unparsable date) sort last.
+      # Only headers are read, never post bodies. The index, category pages
+      # and sitemap all list from this, so it's read once per #run or #build
+      # and reused (see #reset_posts_metadata).
       def sorted_posts_metadata
-        posts_meta = published_post_paths.map do |post_path|
-          meta = post_metadata(post_path)
-          meta.merge(
-            '__filename' => File.basename(post_path),
-            '__date' => parse_post_date(meta['date'])
-          )
+        @sorted_posts_metadata ||= begin
+          posts_meta = published_post_paths.map do |post_path|
+            meta = post_metadata(post_path)
+            meta.merge(
+              '__filename' => File.basename(post_path),
+              '__date' => parse_post_date(meta['date'])
+            )
+          end
+          posts_meta.sort_by { |meta| meta['__date'] || Date.new(0) }.reverse
         end
-        posts_meta.sort_by { |meta| meta['__date'] || Date.new(0) }.reverse
+      end
+
+      # Forgets the posts read by #sorted_posts_metadata, at the start and end
+      # of every #run and #build, so the watcher always sees the latest edits.
+      def reset_posts_metadata
+        @sorted_posts_metadata = nil
+        @posts_by_category = nil
       end
 
       # Renders the Markdown post listing per config.yaml's
@@ -987,6 +1199,8 @@ module Parrot
           token = ::Regexp.last_match(1)
           if token == 'post_link'
             "##{meta['__filename']}"
+          elsif token == 'post_category_tag'
+            category_tag_markdown(meta)
           elsif token == 'post_date'
             meta['__date']&.strftime(post_date_format('on_list')) || ''
           elsif token.start_with?('post_')
@@ -995,6 +1209,22 @@ module Parrot
             meta['__date']&.strftime(token) || ''
           end
         end
+      end
+
+      # `{post_category_tag}` in a list_format: the post's category as a link to
+      # its listing, given the same `category-tag` class as the one under a
+      # post's title; "" for a post without a category.
+      def category_tag_markdown(meta)
+        href = category_href(meta)
+        return '' unless href
+
+        "[#{escape_markdown(post_category(meta))}](#{href}){: .category-tag}"
+      end
+
+      # Backslash-escapes the characters kramdown would otherwise read as
+      # markup, for header text (a category name) dropped into Markdown.
+      def escape_markdown(text)
+        text.gsub(/([\\`*_{}\[\]()#+\-.!|<>])/) { "\\#{::Regexp.last_match(1)}" }
       end
 
       # Expands a literal "{post_title}" placeholder inside a post's own

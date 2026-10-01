@@ -134,6 +134,36 @@
   }
 }
 
+// The date and category line Parrot adds under a post's title.
+.post-meta {
+  margin-top: -0.5rem;
+  color: var(--text-light);
+  font-size: 0.95rem;
+}
+
+// A post's category, linking to that category's listing: under a post's
+// title, and in listings via list_format's {post_category_tag}.
+.category-tag {
+  display: inline-block;
+  padding: 0 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  text-decoration: none;
+  vertical-align: middle;
+
+  &,
+  &:visited {
+    color: var(--text-light);
+  }
+
+  &:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+}
+
 .post-tags {
   margin-top: 2rem;
   font-size: 0.9rem;
