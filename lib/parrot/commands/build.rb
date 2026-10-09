@@ -8,6 +8,7 @@ require 'sassc'
 require 'tilt/kramdown'
 require 'kramdown-parser-gfm'
 require 'rouge'
+require_relative '../post_header'
 
 module Parrot
   module Commands
@@ -15,6 +16,8 @@ module Parrot
     # @usage  parrot build
     # The build files will be kept in the build directory
     class BuildCommand
+      include PostHeader
+
       # Wraps rouge's class-tagged <span> output in <pre><code>, same markup
       # kramdown's default (deprecated) HTMLLegacy formatter produced.
       class CodeFormatter < Rouge::Formatters::HTML
@@ -638,43 +641,8 @@ module Parrot
         end
       end
 
-      def draft_post?(meta)
-        meta['draft'] == 'true'
-      end
-
       def build_mode?
         @config[:build_mode]
-      end
-
-      # Reads the `<!-- key: value -->` comment header at the top of a post's
-      # Markdown file into a Hash. Returns {} when the file has no such header.
-      def post_metadata(post_path)
-        header = File.read(post_path)[/\A\s*<!--(.+?)-->/m, 1]
-        return {} unless header
-
-        meta = header.each_line.with_object({}) do |line, meta|
-          key, sep, value = line.partition(':')
-          next if sep.empty?
-
-          key = key.strip
-          value = value.strip
-          meta[key] = value unless key.empty? || value.empty?
-        end
-
-        meta['title']&.concat(' [Draft]') if draft_post?(meta)
-        meta
-      end
-
-      # "algorithms, coding" -> ["algorithms", "coding"]: the header's
-      # comma-separated `tags`, trimmed, without blanks or duplicates.
-      def post_tags(meta)
-        meta['tags'].to_s.split(',').map(&:strip).reject(&:empty?).uniq
-      end
-
-      # A post's header `category`, trimmed, or nil when it has none.
-      def post_category(meta)
-        category = meta['category'].to_s.strip
-        category.empty? ? nil : category
       end
 
       # The category listing a post's `category` links to ("category-ruby.html"),

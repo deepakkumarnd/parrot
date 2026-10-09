@@ -15,7 +15,9 @@ module Parrot
     new: SubcommandEntry.new('new <blog_name>', 'Create new blog'),
     build: SubcommandEntry.new('build', 'Build the blog'),
     serve: SubcommandEntry.new('serve', 'Start development server locally'),
-    post: SubcommandEntry.new('post --title <post title>', 'Add new post with a title')
+    post: SubcommandEntry.new('post --title <post title>', 'Add new post with a title'),
+    'list-tags': SubcommandEntry.new('list-tags', 'List the tags used in posts'),
+    'list-categories': SubcommandEntry.new('list-categories', 'List the categories used in posts')
   }.freeze
 
   USAGE_LINE = 'parrot [options] [subcommand] [args]'.freeze
@@ -35,6 +37,10 @@ module Parrot
 
         - Build the blog
           parrot build
+
+        - List the tags or categories already in use
+          parrot list-tags
+          parrot list-categories
     HELP_TEXT
 
   HELP_HEADER =
