@@ -3,6 +3,7 @@ require_relative 'commands/new'
 require_relative 'commands/build'
 require_relative 'commands/serve'
 require_relative 'commands/post'
+require_relative 'commands/list'
 
 module Parrot
   class Runner
@@ -22,8 +23,9 @@ module Parrot
 
     private
 
+    # "build" -> BuildCommand, "list-tags" -> ListTagsCommand
     def to_command_class(command)
-      Commands.const_get("#{command.capitalize}Command")
+      Commands.const_get("#{command.split('-').map(&:capitalize).join}Command")
     end
   end
 end

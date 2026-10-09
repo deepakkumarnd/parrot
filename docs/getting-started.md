@@ -41,11 +41,13 @@ parrot build                          # writes the site into ./public
 | `parrot post --title "<title>"` | Create `views/posts/<slug>.md` with today's date |
 | `parrot build` | Build the current blog into `public/` |
 | `parrot serve` | Build, serve `public/` on port 8000, and watch for changes |
+| `parrot list-tags` | List every tag used in `views/posts`, with how many posts use it |
+| `parrot list-categories` | List every category used in `views/posts`, with how many posts use it |
 
 Global flags: `-q` / `--quiet`, `-v` / `--version`, `-h` / `--help`.
 
-`post`, `build` and `serve` work on the current directory, so run them from the
-blog's root.
+`post`, `build`, `serve`, `list-tags` and `list-categories` work on the current
+directory, so run them from the blog's root.
 
 ## Project layout
 

@@ -21,6 +21,15 @@ describe Parrot::Runner do
       expect(Parrot::Runner.new('serve', %w[foo], config).command).to be_an_instance_of(Parrot::Commands::ServeCommand)
     end
 
+    it 'should create a ListTagsCommand object for list-tags' do
+      expect(Parrot::Runner.new('list-tags', [], config).command).to be_an_instance_of(Parrot::Commands::ListTagsCommand)
+    end
+
+    it 'should create a ListCategoriesCommand object for list-categories' do
+      expect(Parrot::Runner.new('list-categories', [], config).command)
+        .to be_an_instance_of(Parrot::Commands::ListCategoriesCommand)
+    end
+
     it 'should raise error if the command is invalid' do
       expect { Parrot::Runner.new('foo', config) }.to raise_error(NameError)
     end
