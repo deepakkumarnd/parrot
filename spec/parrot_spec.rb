@@ -16,6 +16,23 @@ describe Parrot do
     end
   end
 
+  context 'without arguments' do
+    it 'says no sub command was given' do
+      expect { Parrot::Parrot.new([]).run }
+        .to output(/\AOops! You did not provide any subcommand\.\n\n/).to_stdout
+    end
+
+    it 'displays usage instructions' do
+      expect { Parrot::Parrot.new([]).run }.to output(/Sub Commands:/).to_stdout
+    end
+  end
+
+  context 'with option -v and no sub command' do
+    it 'does not also display usage instructions' do
+      expect { Parrot::Parrot.new(%w[-v]).run }.not_to output(/Sub Commands:|Oops!/).to_stdout
+    end
+  end
+
   context 'in quiet mode' do
     it 'will be quiet by default while testing' do
       parrot = Parrot::Parrot.new
