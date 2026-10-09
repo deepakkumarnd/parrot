@@ -791,14 +791,15 @@ describe Parrot::Commands do
         expect(File.read('blog/public/index.html')).not_to include('class="search')
       end
 
-      it 'is on when the search section leaves out enabled' do
+      it 'stays off when the search section leaves out enabled' do
         File.write('blog/config.yaml', "search:\n  placeholder: \"Find a post\"\n")
         command.run
-        expect(File.exist?('blog/public/search.js')).to be true
+        expect(File.exist?('blog/public/search.js')).to be false
+        expect(File.read('blog/public/index.html')).not_to include('class="search')
       end
 
       it 'uses config.yaml search.placeholder' do
-        File.write('blog/config.yaml', "search:\n  placeholder: \"Find a post\"\n")
+        File.write('blog/config.yaml', "search:\n  enabled: true\n  placeholder: \"Find a post\"\n")
         command.run
         expect(File.read('blog/public/index.html')).to include('placeholder="Find a post"')
       end
