@@ -40,10 +40,16 @@ describe Parrot::Search::SearchIndex do
     expect(index.lookup('python')).to eq([])
   end
 
-  it 'serializes to posts plus a character trie with post ids under "$"' do
+  it 'serializes to posts plus a codepoint trie with post ids under "$"' do
     data = JSON.parse(index.to_json)
     expect(data['posts'].length).to eq(3)
-    expect(data['trie'].dig('r', 'u', 's', 't', '$')).to eq([1])
-    expect(data['trie'].dig('r', 'u', 'b', 'y', '$')).to eq([0])
+    expect(data['trie'].dig(*'rust'.codepoints.map(&:to_s), '$')).to eq([1])
+    expect(data['trie'].dig(*'ruby'.codepoints.map(&:to_s), '$')).to eq([0])
+  end
+
+  it 'matches characters outside the Basic Multilingual Plane by codepoint' do
+    index.add(title: '𝒜lgebra notes', url: 'algebra.html')
+    expect(index.trie.keys).to include('𝒜'.ord)
+    expect(index.lookup('𝒜l').map { |post| post['url'] }).to eq(%w[algebra.html])
   end
 end

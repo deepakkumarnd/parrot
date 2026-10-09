@@ -743,9 +743,9 @@ describe Parrot::Commands do
           global.window = {};
           global.document = {
             readyState: 'complete',
-            querySelector: function () { return null; },
-            querySelectorAll: function () { return []; },
-            addEventListener: function () {}
+            querySelector: () => null,
+            querySelectorAll: () => [],
+            addEventListener: () => {}
           };
           eval(require('fs').readFileSync(process.argv[1], 'utf8'));
           console.log(JSON.stringify(JSON.parse(process.argv[2]).map(window.ParrotSearch.search)));
