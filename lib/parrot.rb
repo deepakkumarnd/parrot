@@ -61,7 +61,15 @@ module Parrot
     end
 
     def run
-      return if @command.nil?
+      if @command.nil?
+        # Bare `parrot` (or only `-q`) has nothing to do, so show how to use
+        # it; -h and -v have already printed their output.
+        unless @options[:info_printed]
+          puts("Oops! You did not provide any subcommand.\n\n")
+          puts usage(@parser)
+        end
+        return
+      end
 
       exit_if_invalid(@command)
       Runner.new(@command, @args, config).run_command
@@ -104,15 +112,18 @@ module Parrot
     private
 
     def extract_options!(args)
-      OptionParser.new("Usage: #{USAGE_LINE}") do |parser|
+      @parser = OptionParser.new("Usage: #{USAGE_LINE}") do |parser|
         parser.on('-q', '--quiet', 'Quiet mode') { @options[:quiet] = true }
         parser.on_tail('-v', '--version', 'Prints version information') do
           puts("Parrot: #{VERSION}")
+          @options[:info_printed] = true
         end
         parser.on_tail('-h', '--help', 'Prints usage instruction') do
           puts usage(parser)
+          @options[:info_printed] = true
         end
-      end.order!(args)
+      end
+      @parser.order!(args)
       # Stop at the first non-option (the sub-command) so flags that belong to
       # the sub-command, e.g. `parrot post --title "..."`, are left untouched.
     end
