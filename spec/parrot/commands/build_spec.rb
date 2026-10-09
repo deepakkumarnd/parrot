@@ -741,7 +741,12 @@ describe Parrot::Commands do
       def search_in_node(*queries)
         script = <<~JS
           global.window = {};
-          global.document = { readyState: 'complete', querySelector: function () { return null; } };
+          global.document = {
+            readyState: 'complete',
+            querySelector: function () { return null; },
+            querySelectorAll: function () { return []; },
+            addEventListener: function () {}
+          };
           eval(require('fs').readFileSync(process.argv[1], 'utf8'));
           console.log(JSON.stringify(JSON.parse(process.argv[2]).map(window.ParrotSearch.search)));
         JS
@@ -796,6 +801,35 @@ describe Parrot::Commands do
         command.run
         expect(File.exist?('blog/public/search.js')).to be false
         expect(File.read('blog/public/index.html')).not_to include('class="search')
+      end
+
+      it 'fills an empty <div class="search"> the layout places itself, instead of adding one after the nav' do
+        layout = 'blog/views/layout.html.erb'
+        File.write(layout, File.read(layout).sub('<main>', '<div class="search"></div>\n  <main>'))
+        command.run
+
+        html = Nokogiri::HTML(File.read('blog/public/index.html'))
+        expect(html.css('div.search').length).to eq(1)
+        expect(html.at('div.search').next_element.name).to eq('main')
+        expect(html.at('div.search .search-input')).not_to be_nil
+      end
+
+      it 'drops the layout\'s <div class="search"> when search is off' do
+        layout = 'blog/views/layout.html.erb'
+        File.write(layout, File.read(layout).sub('<main>', '<div class="search"></div>\n  <main>'))
+        File.write('blog/config.yaml', "search:\n  enabled: false\n")
+        command.run
+
+        expect(File.read('blog/public/index.html')).not_to include('class="search')
+      end
+
+      it 'keeps a byte-order mark from the compiled CSS at the very start of app.css' do
+        File.write('blog/css/app.scss', ":root { --quote: \"“\"; }\n")
+        command.run
+
+        css = File.read('blog/public/app.css', encoding: 'UTF-8')
+        expect(css).to start_with("\uFEFF.search{")
+        expect(css.count("\uFEFF")).to eq(1)
       end
 
       it 'uses config.yaml search.placeholder' do

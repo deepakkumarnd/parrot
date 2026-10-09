@@ -71,11 +71,17 @@ The build adds these classes, so you can style them:
 
 ## Search
 
-The build adds the search box right after the header's `<nav>` on every page,
-and loads `search.js` with `defer`. The box stays hidden until the script has
-loaded. It ships with a few default styles that use Simple.css's color
-variables, and these come before your own CSS in `app.css`, so your rules in
-`css/app.scss` override them:
+When search is on, the build adds the search box at the end of the `<header>`
+on every page and loads `search.js` with `defer`. The box stays hidden
+until the script has loaded. To put it somewhere else, add an empty
+`<div class="search"></div>` where you want it in `views/layout.html.erb`. The
+build fills that in, or removes it when search is off.
+
+The box ships with a few default styles, all scoped under `.search` so a
+theme's plain `input` or `li` rules don't leak in. They use Simple.css's color
+variables when your theme defines them. These styles come before your own CSS
+in `app.css`, so rules in `css/app.scss` with the same selectors (for example
+`.search .search-input`) override them:
 
 | Class | Element |
 | --- | --- |
