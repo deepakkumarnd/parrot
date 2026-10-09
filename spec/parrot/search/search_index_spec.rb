@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-describe Parrot::SearchIndex do
+describe Parrot::Search::SearchIndex do
   subject(:index) { described_class.new }
 
   before do
