@@ -1324,9 +1324,12 @@ module Parrot
         settings.is_a?(Hash) ? settings : {}
       end
 
-      # Search is on unless config.yaml sets search.enabled to false.
+      # Search is opt-in per blog: on once config.yaml has a `search`
+      # section (new blogs get one from the skeleton) unless it sets
+      # `enabled: false`. Blogs created before search existed have no such
+      # section, so their builds stay as they were.
       def search_enabled?
-        search_settings['enabled'] != false
+        posts_config['search'].is_a?(Hash) && search_settings['enabled'] != false
       end
 
       # The `post_date_format` section of config.yaml, or {}.

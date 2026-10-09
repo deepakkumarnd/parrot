@@ -102,8 +102,8 @@ about it. Category pages are listed in `sitemap.xml`.
 
 ## Search
 
-Every page gets a search box in its header that suggests posts as the reader
-types. It runs entirely in the browser: the build writes `public/search.js`,
+With search on, every page gets a search box in its header that suggests posts
+as the reader types. It runs entirely in the browser: the build writes `public/search.js`,
 which holds an index of every published post's title, tags and category, and
 nothing is fetched while searching.
 
@@ -117,3 +117,14 @@ post's title, tags or category, ignoring case: `ru tes` finds a post titled
 "Ruby testing tips". Up to 10 suggestions are shown, newest first, each linking
 to its post. Drafts are left out of `parrot build`, the same as everywhere
 else. See [Customizing](customizing.md#search) to restyle it.
+
+Search is on only when `config.yaml` has a `search` section. New blogs get one
+from `parrot new`, so search starts on. Blogs created before search existed
+have no such section, so their builds don't change until you add one:
+
+```yaml
+search:
+  enabled: true
+```
+
+Within the section, leaving out `enabled` means `true`.

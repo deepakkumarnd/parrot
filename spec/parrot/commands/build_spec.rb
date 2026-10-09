@@ -751,7 +751,7 @@ describe Parrot::Commands do
         JSON.parse(output)
       end
 
-      it 'is on by default: builds search.js with every post and loads it on every page' do
+      it 'is on for a new blog: builds search.js with every post and loads it on every page' do
         command.run
 
         script = File.read('blog/public/search.js')
@@ -772,6 +772,29 @@ describe Parrot::Commands do
         command.run
         html = Nokogiri::HTML(File.read('blog/public/index.html'))
         expect(html.at('header.site-header nav.site-nav').next_element['class']).to eq('search')
+      end
+
+      it 'stays off for an existing blog whose config.yaml has no search section' do
+        File.write('blog/config.yaml', "post_listing:\n  list_title: \"Posts\"\n")
+        command.run
+
+        expect(File.exist?('blog/public/search.js')).to be false
+        pages.each { |name| expect(File.read("blog/public/#{name}")).not_to include('search.js') }
+        expect(File.read('blog/public/app.css')).not_to include('.search-suggestions')
+      end
+
+      it 'stays off when there is no config.yaml' do
+        File.delete('blog/config.yaml')
+        command.run
+
+        expect(File.exist?('blog/public/search.js')).to be false
+        expect(File.read('blog/public/index.html')).not_to include('class="search')
+      end
+
+      it 'is on when the search section leaves out enabled' do
+        File.write('blog/config.yaml', "search:\n  placeholder: \"Find a post\"\n")
+        command.run
+        expect(File.exist?('blog/public/search.js')).to be true
       end
 
       it 'uses config.yaml search.placeholder' do
