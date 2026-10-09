@@ -17,6 +17,10 @@ post_listing:
 post_date_format:
   on_list: "%m/%Y"      # {post_date} inside list_format
   on_post: "%d/%m/%Y"   # {post_date} inside a post's own body
+
+search:
+  enabled: true                 # false drops the search box and search.js
+  placeholder: "Search posts"   # placeholder text inside the search box
 ```
 
 Changes to `config.yaml` are picked up by `parrot serve` without a restart.
@@ -95,3 +99,21 @@ Page names come from the category name, lowercased, with spaces turned into
 hyphens and anything other than letters, digits and hyphens dropped. Names that
 end up the same (such as "C++" and "C") share one page, and the build warns
 about it. Category pages are listed in `sitemap.xml`.
+
+## Search
+
+Every page gets a search box in its header that suggests posts as the reader
+types. It runs entirely in the browser: the build writes `public/search.js`,
+which holds an index of every published post's title, tags and category, and
+nothing is fetched while searching.
+
+| Key | Default | What it does |
+| --- | --- | --- |
+| `enabled` | `true` | `false` drops the search box from every page and doesn't build `search.js`. |
+| `placeholder` | `"Search posts"` | Placeholder text inside the search box. |
+
+A query matches a post when every word in it is the start of a word in the
+post's title, tags or category, ignoring case: `ru tes` finds a post titled
+"Ruby testing tips". Up to 10 suggestions are shown, newest first, each linking
+to its post. Drafts are left out of `parrot build`, the same as everywhere
+else. See [Customizing](customizing.md#search) to restyle it.

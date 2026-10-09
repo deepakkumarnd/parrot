@@ -44,6 +44,8 @@ upload the `public/` folder to any static host.
 - **SEO built in** — per-page titles, descriptions, canonical URLs, Open Graph
   and Twitter cards, schema.org JSON-LD, `sitemap.xml`, `robots.txt` and an RSS
   feed.
+- **Instant search** — a search box that suggests posts by title, tag or
+  category as you type, running entirely in the browser.
 - **Light and dark theme** — follows the system setting, with a toggle that
   remembers the reader's choice.
 - **Drafts** — preview unpublished posts locally; they never reach the build.

@@ -9,6 +9,7 @@ require 'tilt/kramdown'
 require 'kramdown-parser-gfm'
 require 'rouge'
 require_relative '../post_header'
+require_relative '../search_index'
 
 module Parrot
   module Commands
@@ -33,6 +34,9 @@ module Parrot
           yield '</code></pre></div>' if @wrap
         end
       end
+
+      # Files the gem ships into every build, not part of the user's blog.
+      ASSETS_DIR = File.expand_path('../assets', __dir__)
 
       attr_accessor :app_root, :config, :build_path
 
@@ -74,6 +78,7 @@ module Parrot
 
         html = update_internal_links(text)
         copy_image_assets(html)
+        inject_search(html)
         apply_page_meta(html, index_filename(page_number))
 
         output = File.join(build_path, index_filename(page_number))
@@ -116,6 +121,7 @@ module Parrot
 
         html = update_internal_links(layout.render { markdown_string(markdown).render })
         copy_image_assets(html)
+        inject_search(html)
 
         title = page_number == 1 ? "#{name} posts" : "#{name} posts (page #{page_number})"
         meta = { 'title' => title, 'description' => "Posts filed under #{name}." }
@@ -140,6 +146,7 @@ module Parrot
         layout = Tilt.new("#{app_root}/views/layout.html.erb")
         html = update_internal_links(layout.render { markdown_string("### Categories\n\n#{listing}\n").render })
         copy_image_assets(html)
+        inject_search(html)
         meta = { 'title' => 'Categories', 'description' => 'Every category on this blog.' }
         apply_page_meta(html, 'categories.html', meta, kind: :category)
 
@@ -170,6 +177,7 @@ module Parrot
         layout = Tilt.new("#{app_root}/views/layout.html.erb")
         html = update_internal_links(layout.render { markdown(source).render })
         copy_image_assets(html)
+        inject_search(html)
 
         title = html.at('head title')
         title.content = 'Page not found' if title
@@ -204,6 +212,7 @@ module Parrot
 
         html = update_internal_links(layout.render { body })
         copy_image_assets(html)
+        inject_search(html)
 
         meta['title'] ||= html.at('main h1')&.text
         meta['description'] ||= summarize(body)
@@ -228,6 +237,7 @@ module Parrot
 
         html = update_internal_links(text)
         copy_image_assets(html)
+        inject_search(html)
         html = inject_scripts(html)
         html = inject_post_meta(html, meta)
         html = inject_back_link(html, page_number)
@@ -359,6 +369,53 @@ module Parrot
         html
       end
 
+      # Adds the search box and <script src="search.js"> to a page, unless
+      # config.yaml turns search off. The box goes right after the header's
+      # nav (or at the top of the header, or of <body>, for layouts without
+      # one), hidden until search.js has wired it up.
+      def inject_search(html)
+        return html unless search_enabled?
+
+        body = html.at('body')
+        return html unless body
+
+        container = Nokogiri::XML::Node.new('div', html)
+        container['class'] = 'search'
+        container['hidden'] = 'hidden'
+
+        input = Nokogiri::XML::Node.new('input', html)
+        input['class'] = 'search-input'
+        input['type'] = 'search'
+        input['placeholder'] = search_settings['placeholder'] || DEFAULT_SEARCH_PLACEHOLDER
+        input['aria-label'] = 'Search posts'
+        input['autocomplete'] = 'off'
+        container.add_child(input)
+
+        list = Nokogiri::XML::Node.new('ul', html)
+        list['class'] = 'search-suggestions'
+        list['id'] = 'search-suggestions'
+        list['role'] = 'listbox'
+        list['hidden'] = 'hidden'
+        container.add_child(list)
+
+        header = html.at('header.site-header') || html.at('header')
+        nav = header&.at('nav')
+        if nav
+          nav.add_next_sibling(container)
+        elsif header
+          header.prepend_child(container)
+        else
+          body.prepend_child(container)
+        end
+
+        script = Nokogiri::XML::Node.new('script', html)
+        script['src'] = 'search.js'
+        script['defer'] = 'defer'
+        script.content = '' # Needed to close the tag properly
+        (html.at('head') || body).add_child(script)
+        html
+      end
+
       def copy_image_assets(html)
         html.css('img, link').each do |node|
           # <img> carries the path in src, <link> (icons, favicons) in href.
@@ -391,8 +448,10 @@ module Parrot
           end
 
         # The syntax-highlight theme must always ship, even when the user's
-        # own stylesheet is empty or fails to compile.
+        # own stylesheet is empty or fails to compile. The search box's
+        # default styles go first, so the user's own rules override them.
         compiled_css = "#{user_css}\n#{syntax_highlight_css}"
+        compiled_css = "#{File.read(File.join(ASSETS_DIR, 'search.css'))}\n#{compiled_css}" if search_enabled?
 
         target_path = File.join(build_path, 'app.css')
         File.write(target_path, compiled_css)
@@ -402,6 +461,33 @@ module Parrot
       def compile_js
         FileUtils.cp(File.join(app_root, 'javascripts', 'app.js'), File.join(build_path))
         config.logger.info "Copied app.js to #{build_path}"
+      end
+
+      # Writes public/search.js: the browser-side search from
+      # lib/parrot/assets/search.js with a trie of every published post's
+      # title, tags and category baked in, so searching never touches the
+      # network. Removed instead when config.yaml turns search off.
+      def build_search
+        output = File.join(build_path, 'search.js')
+        unless search_enabled?
+          FileUtils.rm_f(output)
+          return
+        end
+
+        index = SearchIndex.new
+        sorted_posts_metadata.each do |meta|
+          index.add(
+            title: meta['title'] || File.basename(meta['__filename'], '.md'),
+            url: meta['__filename'].sub('.md', '.html'),
+            keywords: [*post_tags(meta), *post_category(meta)]
+          )
+        end
+
+        script = File.read(File.join(ASSETS_DIR, 'search.js'))
+                     .sub('/*__PARROT_SEARCH_INDEX__*/null') { index.to_json }
+                     .sub('/*__PARROT_SEARCH_LIMIT__*/10') { SEARCH_SUGGESTION_LIMIT.to_s }
+        File.write(output, script)
+        config.logger.info "Built #{output}"
       end
 
       def run
@@ -419,6 +505,7 @@ module Parrot
         build_sitemap
         build_robots
         build_feed
+        build_search
         compile_css
         compile_js
       ensure
@@ -575,11 +662,17 @@ module Parrot
           # affects the {post_date} placeholder inside every post's own body.
           # per_page changes how many index pages there are, so the sitemap
           # listing them is rewritten too. Category pages share all of that.
+          # search can be switched on or off, which touches every page, the
+          # stylesheet and search.js itself.
           build_index_page
           build_posts
           build_category_pages
           build_categories_page
+          build_404_page
+          build_about_page
           build_sitemap
+          build_search
+          compile_css
         when %r{\Aviews/posts/[^/]+\.md\z}
           check_reserved_post_names!
           remove_built_post(path) unless File.exist?(path)
@@ -587,13 +680,15 @@ module Parrot
           # any of which can change the generated index listing and, when
           # pagination is active, shift other posts onto a different index
           # page — so every post is rebuilt to keep back-links correct. Its
-          # category may have changed too, so category pages are rebuilt.
+          # category may have changed too, so category pages are rebuilt, and
+          # its title, tags or category may have changed the search index.
           build_posts
           build_index_page
           build_category_pages
           build_categories_page
           build_sitemap
           build_feed
+          build_search
         when %r{\Acss/.+\.(scss|css)\z}
           # css is concatenated before compiling, so a single change recompiles all.
           compile_css
@@ -1221,6 +1316,17 @@ module Parrot
       # file is missing or invalid.
       def post_listing_settings
         posts_config['post_listing'] || {}
+      end
+
+      # The `search` section of config.yaml, or {}.
+      def search_settings
+        settings = posts_config['search']
+        settings.is_a?(Hash) ? settings : {}
+      end
+
+      # Search is on unless config.yaml sets search.enabled to false.
+      def search_enabled?
+        search_settings['enabled'] != false
       end
 
       # The `post_date_format` section of config.yaml, or {}.
