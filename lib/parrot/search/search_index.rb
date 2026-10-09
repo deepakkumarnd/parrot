@@ -3,14 +3,16 @@ require 'json'
 module Parrot
   module Search
     # The trie behind the client-side search box. Every keyword token (from a
-    # post's title, tags and category) is inserted one character per level;
-    # the node a token ends on lists, under "$", the ids of the posts it came
-    # from. Post ids index into #posts, which holds just what a suggestion
-    # needs — title and url — in the order posts were added (newest first), so
-    # a lower id is a newer post. Serialized into public/search.js, where
-    # lib/parrot/assets/search.js walks it for prefix matches.
+    # post's title, tags and category) is inserted one codepoint per level,
+    # keyed by its number ("r" is 114), so Ruby and search.js split words
+    # the same way; the node a token ends on lists, under "$", the ids of the
+    # posts it came from. Post ids index into #posts, which holds just what a
+    # suggestion needs — title and url — in the order posts were added
+    # (newest first), so a lower id is a newer post. Serialized into
+    # public/search.js, where lib/parrot/assets/search.js walks it for prefix
+    # matches.
     class SearchIndex
-      # Never a key character: tokens are only letters, marks and digits.
+      # Never clashes with a key: every other key is a codepoint number.
       POSTS_KEY = '$'.freeze
 
       attr_reader :posts, :trie
@@ -34,7 +36,7 @@ module Parrot
         @posts << { 'title' => title, 'url' => url }
 
         [title, *keywords].flat_map { |text| self.class.tokenize(text) }.uniq.each do |token|
-          node = token.each_char.reduce(@trie) { |current, char| current[char] ||= {} }
+          node = token.each_codepoint.reduce(@trie) { |current, codepoint| current[codepoint] ||= {} }
           ids = node[POSTS_KEY] ||= []
           ids << id unless ids.include?(id)
         end
@@ -46,7 +48,7 @@ module Parrot
         token = self.class.tokenize(prefix).first
         return [] unless token
 
-        node = token.each_char.reduce(@trie) { |current, char| current && current[char] }
+        node = token.each_codepoint.reduce(@trie) { |current, codepoint| current && current[codepoint] }
         return [] unless node
 
         collect_ids(node).sort.map { |id| @posts[id] }

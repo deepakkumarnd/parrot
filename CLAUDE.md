@@ -17,3 +17,8 @@
   a commit.
 - Approval covers only the changes it was given for. Later changes need a new
   review before they are committed.
+
+## JavaScript
+- Write all JavaScript (e.g. `lib/parrot/assets/*.js`, `skel/javascripts/*.js`)
+  using ES6+ syntax: `const`/`let` instead of `var`, arrow functions, template
+  literals, destructuring, and `class` where appropriate.
