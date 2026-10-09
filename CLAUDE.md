@@ -10,3 +10,10 @@
     (e.g. `fix/7-broken-internal-links`).
 - The name part is lowercase and kebab-case.
 - If the issue has neither label, or has both, ask before creating the branch.
+
+## Committing (strict)
+- NEVER commit without the user's review. After making changes, stop, summarize
+  what changed, and wait for the user to review the diff and explicitly ask for
+  a commit.
+- Approval covers only the changes it was given for. Later changes need a new
+  review before they are committed.

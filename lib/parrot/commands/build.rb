@@ -38,6 +38,8 @@ module Parrot
       # Files the gem ships into every build, not part of the user's blog.
       ASSETS_DIR = File.expand_path('../assets', __dir__)
 
+      BOM = "\uFEFF".freeze
+
       attr_accessor :app_root, :config, :build_path
 
       def initialize(args = [], config)
@@ -369,17 +371,24 @@ module Parrot
         html
       end
 
-      # Adds the search box and <script src="search.js"> to a page, unless
-      # config.yaml turns search off. The box goes right after the header's
-      # nav (or at the top of the header, or of <body>, for layouts without
-      # one), hidden until search.js has wired it up.
+      # Adds the search box and <script src="search.js"> to a page when
+      # config.yaml turns search on, hidden until search.js has wired it up.
+      # A layout places the box itself with an empty <div class="search">;
+      # otherwise it goes at the end of <header>, on its own row below the
+      # nav (or at the top of <body>, for layouts without a header). With
+      # search off, that placeholder is removed so it doesn't take up room.
       def inject_search(html)
-        return html unless search_enabled?
+        placeholder = html.at('div.search')
+        unless search_enabled?
+          placeholder&.remove
+          return html
+        end
 
         body = html.at('body')
         return html unless body
 
-        container = Nokogiri::XML::Node.new('div', html)
+        container = placeholder || Nokogiri::XML::Node.new('div', html)
+        container.children.each(&:remove)
         container['class'] = 'search'
         container['hidden'] = 'hidden'
 
@@ -398,14 +407,9 @@ module Parrot
         list['hidden'] = 'hidden'
         container.add_child(list)
 
-        header = html.at('header.site-header') || html.at('header')
-        nav = header&.at('nav')
-        if nav
-          nav.add_next_sibling(container)
-        elsif header
-          header.prepend_child(container)
-        else
-          body.prepend_child(container)
+        unless placeholder
+          header = html.at('header')
+          header ? header.add_child(container) : body.prepend_child(container)
         end
 
         script = Nokogiri::XML::Node.new('script', html)
@@ -446,6 +450,11 @@ module Parrot
             puts "SassC Compilation Error: #{e.message}"
             ''
           end
+        # Compressed output starts with a byte-order mark when the CSS has
+        # non-ASCII characters. Anything put before it would turn the BOM
+        # into part of the first selector, so the browser drops that rule;
+        # it's moved back to the very start of app.css below.
+        bom = user_css.delete_prefix!(BOM) ? BOM : ''
 
         # The syntax-highlight theme must always ship, even when the user's
         # own stylesheet is empty or fails to compile. The search box's
@@ -454,7 +463,7 @@ module Parrot
         compiled_css = "#{File.read(File.join(ASSETS_DIR, 'search.css'))}\n#{compiled_css}" if search_enabled?
 
         target_path = File.join(build_path, 'app.css')
-        File.write(target_path, compiled_css)
+        File.write(target_path, "#{bom}#{compiled_css}")
         config.logger.info "Compiled and minified CSS written to #{target_path}"
       end
 
