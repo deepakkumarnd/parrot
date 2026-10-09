@@ -69,6 +69,27 @@ The build adds these classes, so you can style them:
 | `.post-tags`, `.tag` | The tag list at the bottom of a post |
 | `.category-list` | The list on `categories.html` |
 
+## Search
+
+The build adds the search box right after the header's `<nav>` on every page,
+and loads `search.js` with `defer`. The box stays hidden until the script has
+loaded. It ships with a few default styles that use Simple.css's color
+variables, and these come before your own CSS in `app.css`, so your rules in
+`css/app.scss` override them:
+
+| Class | Element |
+| --- | --- |
+| `.search` | The container around the box and its suggestions |
+| `.search-input` | The text box |
+| `.search-suggestions` | The list of suggestions under the box |
+| `.search-suggestion` | One suggestion, wrapping a link to the post |
+| `.search-suggestion.is-active` | The suggestion picked with the arrow keys or mouse |
+| `.search-empty` | The "No matching posts" line |
+
+Readers can pick a suggestion with ↑/↓ and Enter or by clicking it, and press
+Escape to clear the box. Turn search off with `search.enabled: false` in
+[`config.yaml`](configuration.md#search).
+
 ## Syntax highlighting theme
 
 Code blocks use Rouge's Monokai theme. It's set by `HIGHLIGHT_THEME` in the

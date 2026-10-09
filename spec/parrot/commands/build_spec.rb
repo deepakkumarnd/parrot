@@ -1,3 +1,4 @@
+require 'open3'
 require 'spec_helper'
 
 describe Parrot::Commands do
@@ -727,6 +728,128 @@ describe Parrot::Commands do
         File.write('blog/views/posts/about-me.md', "# About me\n")
         expect { command.run }.not_to raise_error
         expect(File.exist?('blog/public/about-me.html')).to be true
+      end
+    end
+
+    context 'search' do
+      let(:build_config) { Parrot::Config.new(File.join(Dir.pwd, 'blog'), Logger.new(File::NULL)) }
+      let(:command) { Parrot::Commands::BuildCommand.new([], build_config) }
+      let(:pages) { %w[index.html about_parrot.html sample.html categories.html category-guides.html 404.html about.html] }
+
+      # Runs the built search.js under node with a stub DOM and returns
+      # ParrotSearch.search's result for each query.
+      def search_in_node(*queries)
+        script = <<~JS
+          global.window = {};
+          global.document = { readyState: 'complete', querySelector: function () { return null; } };
+          eval(require('fs').readFileSync(process.argv[1], 'utf8'));
+          console.log(JSON.stringify(JSON.parse(process.argv[2]).map(window.ParrotSearch.search)));
+        JS
+        output, status = Open3.capture2('node', '-e', script, 'blog/public/search.js', JSON.generate(queries))
+        raise 'node failed' unless status.success?
+
+        JSON.parse(output)
+      end
+
+      it 'is on by default: builds search.js with every post and loads it on every page' do
+        command.run
+
+        script = File.read('blog/public/search.js')
+        expect(script).to include('"title":"About Parrot","url":"about_parrot.html"')
+        expect(script).to include('"url":"sample.html"')
+        expect(script).not_to include('__PARROT_SEARCH_INDEX__')
+
+        pages.each do |name|
+          html = File.read("blog/public/#{name}")
+          expect(html).to include('<script src="search.js" defer>')
+          expect(html).to include('<div class="search" hidden')
+          expect(html).to include('class="search-input" type="search" placeholder="Search posts"')
+        end
+        expect(File.read('blog/public/app.css')).to include('.search-suggestions{')
+      end
+
+      it 'puts the search box right after the header nav' do
+        command.run
+        html = Nokogiri::HTML(File.read('blog/public/index.html'))
+        expect(html.at('header.site-header nav.site-nav').next_element['class']).to eq('search')
+      end
+
+      it 'uses config.yaml search.placeholder' do
+        File.write('blog/config.yaml', "search:\n  placeholder: \"Find a post\"\n")
+        command.run
+        expect(File.read('blog/public/index.html')).to include('placeholder="Find a post"')
+      end
+
+      it 'leaves skipped drafts out of the index' do
+        File.write('blog/views/posts/story.md', "<!--\ntitle: Secret story\ndraft: true\n-->\n\n# story\n")
+        command.run
+        expect(File.read('blog/public/search.js')).not_to include('story.html')
+      end
+
+      it 'builds no search.js and no search UI when search.enabled is false' do
+        File.write('blog/config.yaml', "search:\n  enabled: false\n")
+        command.run
+
+        expect(File.exist?('blog/public/search.js')).to be false
+        pages.each do |name|
+          html = File.read("blog/public/#{name}")
+          expect(html).not_to include('search.js')
+          expect(html).not_to include('class="search')
+        end
+        expect(File.read('blog/public/app.css')).not_to include('.search-suggestions')
+        expect(File.read('blog/public/index.html')).to include('about_parrot.html')
+      end
+
+      it 'is switched off and back on by the watcher when config.yaml changes' do
+        command.run
+        File.write('blog/config.yaml', "search:\n  enabled: false\n")
+        command.build('config.yaml')
+
+        expect(File.exist?('blog/public/search.js')).to be false
+        pages.each { |name| expect(File.read("blog/public/#{name}")).not_to include('search.js') }
+
+        File.write('blog/config.yaml', "search:\n  enabled: true\n")
+        command.build('config.yaml')
+        expect(File.exist?('blog/public/search.js')).to be true
+        expect(File.read('blog/public/404.html')).to include('<script src="search.js" defer>')
+      end
+
+      it 'reindexes when the watcher rebuilds a changed post' do
+        command.run
+        post = 'blog/views/posts/sample.md'
+        File.write(post, File.read(post).sub('title: Your second post', 'title: Renamed post'))
+        command.build('views/posts/sample.md')
+
+        expect(File.read('blog/public/search.js')).to include('"title":"Renamed post"')
+      end
+
+      context 'in the browser', if: system('node --version', out: File::NULL, err: File::NULL) do
+        before do
+          File.write('blog/views/posts/ruby.md', "<!--\ntitle: Ruby Tips\ndate: 01/10/2026\ntags: ruby, testing\n-->\n\n# Ruby\n")
+          File.write('blog/views/posts/rust.md', "<!--\ntitle: Rust notes\ndate: 02/10/2026\ncategory: Guides\n-->\n\n# Rust\n")
+          command.run
+        end
+
+        it 'matches prefixes of titles, tags and categories, newest first' do
+          ru, test, guide = search_in_node('ru', 'test', 'guide')
+          expect(ru.map { |post| post['url'] }).to eq(%w[rust.html ruby.html])
+          expect(test).to eq([{ 'title' => 'Ruby Tips', 'url' => 'ruby.html' }])
+          expect(guide.map { |post| post['url'] }).to include('rust.html', 'sample.html')
+        end
+
+        it 'is case-insensitive and lists each post once' do
+          upper, both = search_in_node('RUBY', 'ruby ru')
+          expect(upper.map { |post| post['url'] }).to eq(%w[ruby.html])
+          expect(both.map { |post| post['url'] }).to eq(%w[ruby.html])
+        end
+
+        it 'requires every word of the query to match' do
+          expect(search_in_node('rust ruby')).to eq([[]])
+        end
+
+        it 'returns nothing for empty, blank or unmatched queries' do
+          expect(search_in_node('', '   ', '!!', 'python')).to eq([[], [], [], []])
+        end
       end
     end
 

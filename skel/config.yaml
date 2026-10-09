@@ -66,3 +66,14 @@ post_date_format:
   # Used for a literal {post_date} placeholder inside a post's own Markdown
   # body — `parrot post` writes new posts with one under the title.
   on_post: "%d/%m/%Y"
+
+# A search box in the header that suggests posts as the reader types,
+# matching the start of any word in a post's title, tags or category. It
+# runs entirely in the browser: the build writes public/search.js with an
+# index of every published post baked in. Style it through the .search*
+# classes (see docs/customizing.md).
+search:
+  # Set to false to drop the search box and skip building search.js.
+  enabled: true
+  # Placeholder text inside the search box.
+  placeholder: "Search posts"

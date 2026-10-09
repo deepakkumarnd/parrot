@@ -26,6 +26,7 @@ Besides one HTML page per post, the build writes:
 | `sitemap.xml` | Every page. Posts have a `<lastmod>` from their `date`; the index uses the newest post's date. |
 | `feed.xml` | An RSS 2.0 feed, newest post first, linked from every page for autodiscovery. |
 | `robots.txt` | Points crawlers at the sitemap. |
+| `search.js` | The search box's script and post index. Not built when `search.enabled` is `false`. See [Search](configuration.md#search). |
 | `app.css`, `app.js`, `images/` | Compiled styles, scripts and the images pages use. |
 
 If the layout has no `og:url` or canonical URL, the sitemap and feed are

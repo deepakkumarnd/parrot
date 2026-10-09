@@ -43,3 +43,10 @@ DEFAULT_POST_DATE_FORMAT = { 'on_list' => '%m/%Y', 'on_post' => '%d/%m/%Y' }.fre
 # depend on which categories exist. Case-insensitive, since macOS and
 # Windows filesystems are.
 RESERVED_POST_NAMES = /\A(?:index\d*|404|about|categor(?:y|ies)|now|posts?|notes?)\z/i
+
+# Placeholder text of the search box, unless config.yaml's
+# search.placeholder sets one.
+DEFAULT_SEARCH_PLACEHOLDER = 'Search posts'.freeze
+
+# Most suggestions the search box lists for one query.
+SEARCH_SUGGESTION_LIMIT = 10
