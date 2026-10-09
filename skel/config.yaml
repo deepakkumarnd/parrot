@@ -71,7 +71,8 @@ post_date_format:
 # matching the start of any word in a post's title, tags or category. It
 # runs entirely in the browser: the build writes public/search.js with an
 # index of every published post baked in. Style it through the .search*
-# classes (see docs/customizing.md).
+# classes (see docs/customizing.md). Without this section search is off,
+# so delete it or set enabled: false to go without.
 search:
   # Set to false to drop the search box and skip building search.js.
   enabled: true
