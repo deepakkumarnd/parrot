@@ -19,7 +19,7 @@ post_date_format:
   on_post: "%d/%m/%Y"   # {post_date} inside a post's own body
 
 search:
-  enabled: true                 # false drops the search box and search.js
+  enabled: true                 # only true turns search on; false or unset drops the box and search.js
   placeholder: "Search posts"   # placeholder text inside the search box
 ```
 
@@ -109,7 +109,7 @@ nothing is fetched while searching.
 
 | Key | Default | What it does |
 | --- | --- | --- |
-| `enabled` | `true` | `false` drops the search box from every page and doesn't build `search.js`. |
+| `enabled` | off | `true` adds the search box to every page and builds `search.js`. Anything else, or leaving it out, keeps search off. |
 | `placeholder` | `"Search posts"` | Placeholder text inside the search box. |
 
 A query matches a post when every word in it is the start of a word in the
@@ -118,13 +118,11 @@ post's title, tags or category, ignoring case: `ru tes` finds a post titled
 to its post. Drafts are left out of `parrot build`, the same as everywhere
 else. See [Customizing](customizing.md#search) to restyle it.
 
-Search is on only when `config.yaml` has a `search` section. New blogs get one
-from `parrot new`, so search starts on. Blogs created before search existed
-have no such section, so their builds don't change until you add one:
+Search is on only when `config.yaml` sets `search.enabled: true`. New blogs get
+that from `parrot new`, so search starts on. Blogs created before search existed
+have no `search` section, so their builds don't change until you add one:
 
 ```yaml
 search:
   enabled: true
 ```
-
-Within the section, leaving out `enabled` means `true`.
