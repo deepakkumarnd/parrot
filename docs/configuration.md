@@ -102,14 +102,14 @@ about it. Category pages are listed in `sitemap.xml`.
 
 ## Search
 
-With search on, every page gets a search box in its header that suggests posts
+With search on, every page except the 404 page gets a search box in its header that suggests posts
 as the reader types. It runs entirely in the browser: the build writes `public/search.js`,
 which holds an index of every published post's title, tags and category, and
 nothing is fetched while searching.
 
 | Key | Default | What it does |
 | --- | --- | --- |
-| `enabled` | off | `true` adds the search box to every page and builds `search.js`. Anything else, or leaving it out, keeps search off. |
+| `enabled` | off | `true` adds the search box to every page (except 404) and builds `search.js`. Anything else, or leaving it out, keeps search off. |
 | `placeholder` | `"Search posts"` | Placeholder text inside the search box. |
 
 A query matches a post when every word in it is the start of a word in the

@@ -10,6 +10,7 @@ require 'kramdown-parser-gfm'
 require 'rouge'
 require_relative '../post_header'
 require_relative '../search/searchable'
+require_relative '../copy_code'
 
 module Parrot
   module Commands
@@ -19,6 +20,7 @@ module Parrot
     class BuildCommand
       include PostHeader
       include Search::Searchable
+      include CopyCode
 
       # Wraps rouge's class-tagged <span> output in <pre><code>, same markup
       # kramdown's default (deprecated) HTMLLegacy formatter produced.
@@ -82,6 +84,7 @@ module Parrot
         html = update_internal_links(text)
         copy_image_assets(html)
         inject_search(html)
+        inject_copy_code(html)
         apply_page_meta(html, index_filename(page_number))
 
         output = File.join(build_path, index_filename(page_number))
@@ -125,6 +128,7 @@ module Parrot
         html = update_internal_links(layout.render { markdown_string(markdown).render })
         copy_image_assets(html)
         inject_search(html)
+        inject_copy_code(html)
 
         title = page_number == 1 ? "#{name} posts" : "#{name} posts (page #{page_number})"
         meta = { 'title' => title, 'description' => "Posts filed under #{name}." }
@@ -150,6 +154,7 @@ module Parrot
         html = update_internal_links(layout.render { markdown_string("### Categories\n\n#{listing}\n").render })
         copy_image_assets(html)
         inject_search(html)
+        inject_copy_code(html)
         meta = { 'title' => 'Categories', 'description' => 'Every category on this blog.' }
         apply_page_meta(html, 'categories.html', meta, kind: :category)
 
@@ -180,7 +185,6 @@ module Parrot
         layout = Tilt.new("#{app_root}/views/layout.html.erb")
         html = update_internal_links(layout.render { markdown(source).render })
         copy_image_assets(html)
-        inject_search(html)
 
         title = html.at('head title')
         title.content = 'Page not found' if title
@@ -216,6 +220,7 @@ module Parrot
         html = update_internal_links(layout.render { body })
         copy_image_assets(html)
         inject_search(html)
+        inject_copy_code(html)
 
         meta['title'] ||= html.at('main h1')&.text
         meta['description'] ||= summarize(body)
@@ -241,6 +246,7 @@ module Parrot
         html = update_internal_links(text)
         copy_image_assets(html)
         inject_search(html)
+        inject_copy_code(html)
         html = inject_scripts(html)
         html = inject_post_meta(html, meta)
         html = inject_back_link(html, page_number)
@@ -409,9 +415,10 @@ module Parrot
         bom = user_css.delete_prefix!(BOM) ? BOM : ''
 
         # The syntax-highlight theme must always ship, even when the user's
-        # own stylesheet is empty or fails to compile. The search box's
-        # default styles go first, so the user's own rules override them.
-        compiled_css = "#{user_css}\n#{syntax_highlight_css}"
+        # own stylesheet is empty or fails to compile. The copy button's and
+        # search box's default styles go first, so the user's own rules
+        # override them.
+        compiled_css = "#{copy_code_css}\n#{user_css}\n#{syntax_highlight_css}"
         compiled_css = "#{search_css}\n#{compiled_css}" if search_enabled?
 
         target_path = File.join(build_path, 'app.css')
@@ -440,6 +447,7 @@ module Parrot
         build_robots
         build_feed
         build_search
+        build_copy_code
         compile_css
         compile_js
       ensure

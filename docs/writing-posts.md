@@ -70,6 +70,11 @@ puts "hello"
 The highlighting theme is Monokai. See
 [Syntax highlighting theme](customizing.md#syntax-highlighting-theme) to change it.
 
+Every code block gets a **Copy code** button in its top-right corner. Clicking
+it copies the code to the clipboard and shows a short "Copied" message. See
+[Copy buttons on code blocks](customizing.md#copy-buttons-on-code-blocks) to
+restyle it.
+
 ### Math
 
 LaTeX between `$$ … $$` is rendered by MathJax. It's shown inline when it sits
