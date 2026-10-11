@@ -734,7 +734,7 @@ describe Parrot::Commands do
     context 'search' do
       let(:build_config) { Parrot::Config.new(File.join(Dir.pwd, 'blog'), Logger.new(File::NULL)) }
       let(:command) { Parrot::Commands::BuildCommand.new([], build_config) }
-      let(:pages) { %w[index.html about_parrot.html sample.html categories.html category-guides.html 404.html about.html] }
+      let(:pages) { %w[index.html about_parrot.html sample.html categories.html category-guides.html about.html] }
 
       # Runs the built search.js under node with a stub DOM and returns
       # ParrotSearch.search's result for each query.
@@ -771,6 +771,14 @@ describe Parrot::Commands do
           expect(html).to include('class="search-input" type="search" placeholder="Search posts"')
         end
         expect(File.read('blog/public/app.css')).to include('.search-suggestions{')
+      end
+
+      it 'leaves the search box and search.js off the 404 page' do
+        command.run
+
+        page = File.read('blog/public/404.html')
+        expect(page).not_to include('search.js')
+        expect(page).not_to include('class="search')
       end
 
       it 'puts the search box right after the header nav' do
@@ -869,7 +877,7 @@ describe Parrot::Commands do
         File.write('blog/config.yaml', "search:\n  enabled: true\n")
         command.build('config.yaml')
         expect(File.exist?('blog/public/search.js')).to be true
-        expect(File.read('blog/public/404.html')).to include('<script src="search.js" defer>')
+        expect(File.read('blog/public/about.html')).to include('<script src="search.js" defer>')
       end
 
       it 'reindexes when the watcher rebuilds a changed post' do
@@ -908,6 +916,132 @@ describe Parrot::Commands do
         it 'returns nothing for empty, blank or unmatched queries' do
           expect(search_in_node('', '   ', '!!', 'python')).to eq([[], [], [], []])
         end
+      end
+    end
+
+    context 'copy code button' do
+      let(:build_config) { Parrot::Config.new(File.join(Dir.pwd, 'blog'), Logger.new(File::NULL)) }
+      let(:command) { Parrot::Commands::BuildCommand.new([], build_config) }
+
+      # Runs the built copy-code.js under node against a stub DOM holding one
+      # code block, clicks its button and returns what was copied, the toast
+      # text and the class of the element wrapping the block.
+      def click_copy_in_node(code_text)
+        script = <<~JS
+          const el = (tag) => {
+            const node = {
+              tagName: tag, children: [], parentElement: null, attrs: {}, listeners: {},
+              classList: {
+                list: [],
+                add(name) { this.list.push(name); },
+                remove(name) { this.list = this.list.filter((c) => c !== name); },
+                contains(name) { return this.list.includes(name); }
+              },
+              get className() { return this.classList.list.join(' '); },
+              set className(value) { this.classList.list = value.split(' '); },
+              setAttribute(name, value) { this.attrs[name] = value; },
+              appendChild(child) { child.parentElement = this; this.children.push(child); return child; },
+              replaceWith(other) {
+                const siblings = this.parentElement.children;
+                siblings[siblings.indexOf(this)] = other;
+                other.parentElement = this.parentElement;
+              },
+              closest(selector) {
+                for (let n = this; n; n = n.parentElement) {
+                  if (n.classList.contains(selector.slice(1))) return n;
+                }
+                return null;
+              },
+              addEventListener(type, fn) { this.listeners[type] = fn; }
+            };
+            return node;
+          };
+          const body = el('body');
+          const outer = body.appendChild(el('div'));
+          outer.className = 'language-ruby highlighter-rouge';
+          const pre = outer.appendChild(el('div')).appendChild(el('pre'));
+          const code = pre.appendChild(el('code'));
+          code.textContent = process.argv[2];
+
+          let copied = null;
+          global.window = { isSecureContext: true };
+          Object.defineProperty(global, 'navigator', {
+            value: { clipboard: { writeText: async (text) => { copied = text; } } }
+          });
+          global.document = {
+            readyState: 'complete', body,
+            createElement: el,
+            querySelectorAll: () => [code],
+            addEventListener: () => {}
+          };
+          global.setTimeout = () => 0;
+
+          eval(require('fs').readFileSync(process.argv[1], 'utf8'));
+          const wrapper = body.children[0];
+          const button = wrapper.children[1];
+          button.listeners.click().then(() => {
+            const toast = body.children[1];
+            console.log(JSON.stringify({ copied, toast: toast.textContent, wrapper: wrapper.className, button: button.innerHTML }));
+          });
+        JS
+        output, status = Open3.capture2('node', '-e', script, 'blog/public/copy-code.js', code_text)
+        raise 'node failed' unless status.success?
+
+        JSON.parse(output)
+      end
+
+      it 'ships copy-code.js and its styles with every build' do
+        command.run
+
+        expect(File.read('blog/public/copy-code.js')).to eq(File.read(Parrot::CopyCode::COPY_CODE_SCRIPT))
+        expect(File.read('blog/public/app.css')).to include('.copy-code{', '.copy-toast{', 'url(images/copy-icon.svg)')
+        expect(File.read('blog/public/images/copy-icon.svg')).to eq(File.read('blog/images/copy-icon.svg'))
+      end
+
+      it "ships the blog's own copy icon" do
+        File.write('blog/images/copy-icon.svg', '<svg>mine</svg>')
+        command.run
+
+        expect(File.read('blog/public/images/copy-icon.svg')).to eq('<svg>mine</svg>')
+      end
+
+      it 'ships the default copy icon for an older blog without one' do
+        File.delete('blog/images/copy-icon.svg')
+        command.run
+
+        expect(File.read('blog/public/images/copy-icon.svg')).to eq(File.read(Parrot::CopyCode::DEFAULT_COPY_ICON))
+        expect(File.exist?('blog/images/copy-icon.svg')).to be false
+      end
+
+      it 'loads copy-code.js from the layout on every page' do
+        command.run
+
+        %w[index.html about_parrot.html sample.html categories.html about.html 404.html].each do |name|
+          expect(File.read("blog/public/#{name}").scan('<script src="copy-code.js" defer>').length).to eq(1)
+        end
+      end
+
+      it 'adds copy-code.js to every page of an older layout that lacks it' do
+        layout = File.read('blog/views/layout.html.erb')
+        File.write('blog/views/layout.html.erb', layout.sub(%r{\s*<script src="copy-code.js" defer></script>}, ''))
+        expect(File.read('blog/views/layout.html.erb')).not_to include('copy-code.js')
+        command.run
+
+        %w[index.html about_parrot.html sample.html categories.html about.html].each do |name|
+          expect(File.read("blog/public/#{name}").scan('<script src="copy-code.js" defer>').length).to eq(1)
+        end
+      end
+
+      it 'copies the code without its trailing newline and shows a toast' do
+        command.run
+
+        result = click_copy_in_node("puts 1\nputs 2\n")
+        expect(result).to eq(
+          'copied' => "puts 1\nputs 2",
+          'toast' => 'Copied',
+          'wrapper' => 'code-block',
+          'button' => '<span class="copy-code-icon" aria-hidden="true"></span><span>Copy code</span>'
+        )
       end
     end
 

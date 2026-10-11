@@ -72,10 +72,10 @@ The build adds these classes, so you can style them:
 ## Search
 
 When search is on, the build adds the search box at the end of the `<header>`
-on every page and loads `search.js` with `defer`. The box stays hidden
-until the script has loaded. To put it somewhere else, add an empty
-`<div class="search"></div>` where you want it in `views/layout.html.erb`. The
-build fills that in, or removes it when search is off.
+on every page except the 404 page, and loads `search.js` with `defer`. The box
+stays hidden until the script has loaded. To put it somewhere else, add an
+empty `<div class="search"></div>` where you want it in `views/layout.html.erb`.
+The build fills that in, or removes it when search is off.
 
 The box ships with a few default styles, all scoped under `.search` so a
 theme's plain `input` or `li` rules don't leak in. They use Simple.css's color
@@ -102,6 +102,46 @@ Code blocks use Rouge's Monokai theme. It's set by `HIGHLIGHT_THEME` in the
 gem's `lib/parrot/constants.rb` and accepts any Rouge theme name (`github`,
 `gruvbox`, `molokai`, …). It isn't a `config.yaml` setting yet, so changing it
 means editing a checkout of the gem.
+
+## Copy buttons on code blocks
+
+Every code block on your site has a **Copy code** button in its top-right
+corner. Clicking it copies the code and briefly shows "Copied" at the bottom of
+the page.
+
+### Changing how it looks
+
+Parrot ships default styles for the button. Override them in `css/app.scss`
+using these classes:
+
+| Class         | What it styles                                  |
+| ------------- | ----------------------------------------------- |
+| `.code-block` | The box wrapped around each code block          |
+| `.copy-code`  | The **Copy code** button                        |
+| `.copy-toast` | The "Copied" message at the bottom of the page  |
+
+For example, to show the button only while the mouse is over the code:
+
+```scss
+.code-block .copy-code { opacity: 0; }
+.code-block:hover .copy-code { opacity: 1; }
+```
+
+The icon is `images/copy-icon.svg`; replace that file to use your own. Only
+its shape is used: it's drawn in the button's text colour. Older blogs that
+don't have this file get Parrot's default icon.
+
+### How it's loaded
+
+The button comes from `copy-code.js`, which Parrot writes into every build.
+New blogs load it from `views/layout.html.erb`:
+
+```html
+<script src="copy-code.js" defer></script>
+```
+
+If your layout is older and doesn't have this line, you don't need to add it:
+Parrot adds it to each page except the 404 page when it builds.
 
 ## Icons
 
