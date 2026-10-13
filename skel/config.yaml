@@ -78,3 +78,21 @@ search:
   enabled: true
   # Placeholder text inside the search box.
   placeholder: "Search posts"
+
+# A dropdown in the header's nav linking the pages in views/menu/. Each
+# views/menu/<name>.md is built to <name>.html, titled by its header
+# `title`, or else its first heading. Place the dropdown with an empty
+# <div class="menu"></div> in views/layout.html.erb; style it through the
+# .menu and .menu-items classes (see docs/customizing.md).
+menu:
+  # Text on the dropdown's button.
+  label: "Menu"
+  # Which pages the dropdown lists, by filename without .md, in this order.
+  # Pages left out aren't built at all. Remove this list to build and list
+  # every page in views/menu/, sorted by name.
+  pages:
+    - about
+    - now
+    - projects
+    - apps
+    - photos

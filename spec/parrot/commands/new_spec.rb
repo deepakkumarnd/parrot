@@ -23,6 +23,9 @@ describe Parrot::Commands do
         file_list = [
           "#{app_name}/config.yaml",
           "#{app_name}/css/app.scss",
+          "#{app_name}/css/_copy_code.scss",
+          "#{app_name}/css/_menu.scss",
+          "#{app_name}/css/_search.scss",
           "#{app_name}/images/favicon.ico",
           "#{app_name}/images/favicon.svg",
           "#{app_name}/images/apple-touch-icon.png",
@@ -30,7 +33,11 @@ describe Parrot::Commands do
           "#{app_name}/javascripts/app.js",
           "#{app_name}/public/.keep",
           "#{app_name}/views/404.md",
-          "#{app_name}/views/about.md",
+          "#{app_name}/views/menu/about.md",
+          "#{app_name}/views/menu/now.md",
+          "#{app_name}/views/menu/projects.md",
+          "#{app_name}/views/menu/apps.md",
+          "#{app_name}/views/menu/photos.md",
           "#{app_name}/views/layout.html.erb",
           "#{app_name}/views/posts/about_parrot.md",
           "#{app_name}/views/posts/sample.md"

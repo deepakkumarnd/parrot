@@ -146,4 +146,5 @@ skips drafts entirely: no page, and nothing in the index, `sitemap.xml` or
 overwrite pages Parrot generates; the rest are kept free for future pages. The
 check ignores case. `parrot post` refuses such a title, and `parrot build`
 fails if one is in `views/posts/`. A post also can't be named after a category
-page the build writes, such as `category-ruby.md`.
+page the build writes, such as `category-ruby.md`, or after a
+[menu page](configuration.md#the-menu), such as `projects.md`.

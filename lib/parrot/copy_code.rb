@@ -1,21 +1,21 @@
 require 'fileutils'
 require 'nokogiri'
+require_relative 'skeleton'
 
 module Parrot
   # Copy buttons on code blocks, mixed into `build`. Expects the including
   # class to provide app_root, build_path and config.
   module CopyCode
-    # Browser-side copy buttons and their default styles, shipped by the gem
-    # into every build. The layout loads the script on every page; it only
-    # adds buttons where there's a code block.
+    # Browser-side copy buttons, shipped by the gem into every build. The
+    # layout loads the script on every page; it only adds buttons where
+    # there's a code block.
     COPY_CODE_SCRIPT = File.expand_path('assets/copy_code.js', __dir__)
-    COPY_CODE_STYLESHEET = File.expand_path('assets/copy_code.css', __dir__)
 
-    # The button's icon, from the blog's images/ so it can be replaced.
-    # Blogs created before copy buttons existed don't have one, so the
-    # skeleton's copy is shipped instead.
+    # The button's styles and icon, from the blog so they can be edited.
+    # Blogs created before copy buttons existed don't have them, so the
+    # skeleton's copies are used instead.
+    COPY_CODE_STYLESHEET = File.join('css', '_copy_code.scss')
     COPY_ICON = File.join('images', 'copy-icon.svg')
-    DEFAULT_COPY_ICON = File.expand_path("../../skel/#{COPY_ICON}", __dir__)
 
     # Adds <script src="copy-code.js"> to a page whose layout doesn't load
     # it already, as layouts from before copy buttons existed don't.
@@ -37,19 +37,10 @@ module Parrot
       FileUtils.cp(COPY_CODE_SCRIPT, output)
       config.logger.info "Copied copy-code.js to #{build_path}"
 
-      icon = File.join(app_root, COPY_ICON)
-      icon = DEFAULT_COPY_ICON unless File.exist?(icon)
+      icon = Skeleton.path(app_root, COPY_ICON)
       FileUtils.mkdir_p(File.join(build_path, 'images'))
       FileUtils.cp(icon, File.join(build_path, COPY_ICON))
       config.logger.info "Copied #{COPY_ICON} to #{build_path}"
-    end
-
-    private
-
-    # The copy button's and toast's default styles, put ahead of the user's
-    # own CSS so they can override them.
-    def copy_code_css
-      File.read(COPY_CODE_STYLESHEET)
     end
   end
 end

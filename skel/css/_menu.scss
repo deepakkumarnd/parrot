@@ -1,0 +1,96 @@
+// The header's dropdown menu (<details class="menu"> in the nav). The build
+// compiles this file ahead of the rest of css/, so app.scss can override it.
+// The colors come from Simple.css's variables, falling back to plain values
+// for themes without them.
+
+.menu {
+  position: relative;
+  display: inline-block;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  vertical-align: top;
+
+  // The button. Looks like the other nav links.
+  > summary {
+    display: inline-block;
+    margin: 0 0.5rem 1rem;
+    padding: 0.1rem 1rem;
+    border: 1px solid var(--border, #ccc);
+    border-radius: 5px;
+    color: var(--text, inherit);
+    font-weight: normal;
+    list-style: none;
+    cursor: pointer;
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+
+    &::after {
+      content: "\25BE";
+      margin-left: 0.4rem;
+    }
+  }
+
+  > summary:hover,
+  &[open] > summary {
+    border-color: var(--accent, currentColor);
+    color: var(--accent, inherit);
+  }
+
+  &[open] > summary {
+    margin-bottom: 1rem;
+  }
+
+  // The list that drops down.
+  .menu-items {
+    display: block;
+    position: absolute;
+    z-index: 20;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    min-width: 10rem;
+    margin: -0.75rem 0 0;
+    padding: 0.25rem 0;
+    list-style: none;
+    text-align: left;
+    background: var(--bg, #fff);
+    border: 1px solid var(--border, #ccc);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+
+    li {
+      display: block;
+      margin: 0;
+    }
+
+    a {
+      display: block;
+      margin: 0;
+      padding: 0.4rem 0.75rem;
+      border: 0;
+      border-radius: 0;
+      color: var(--text, inherit);
+      text-decoration: none;
+      white-space: nowrap;
+
+      &:hover {
+        background: var(--accent-bg, rgba(127, 127, 127, 0.15));
+        color: var(--accent, inherit);
+      }
+    }
+  }
+}
+
+// Simple.css turns nav links into plain underlined links on narrow screens;
+// the button follows.
+@media only screen and (max-width: 720px) {
+  .menu > summary {
+    border: none;
+    padding: 0;
+    text-decoration: underline;
+  }
+}

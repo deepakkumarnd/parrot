@@ -9,8 +9,10 @@ require 'tilt/kramdown'
 require 'kramdown-parser-gfm'
 require 'rouge'
 require_relative '../post_header'
+require_relative '../skeleton'
 require_relative '../search/searchable'
 require_relative '../copy_code'
+require_relative '../menu'
 
 module Parrot
   module Commands
@@ -21,6 +23,7 @@ module Parrot
       include PostHeader
       include Search::Searchable
       include CopyCode
+      include Menu
 
       # Wraps rouge's class-tagged <span> output in <pre><code>, same markup
       # kramdown's default (deprecated) HTMLLegacy formatter produced.
@@ -83,6 +86,7 @@ module Parrot
 
         html = update_internal_links(text)
         copy_image_assets(html)
+        inject_menu(html)
         inject_search(html)
         inject_copy_code(html)
         apply_page_meta(html, index_filename(page_number))
@@ -127,6 +131,7 @@ module Parrot
 
         html = update_internal_links(layout.render { markdown_string(markdown).render })
         copy_image_assets(html)
+        inject_menu(html)
         inject_search(html)
         inject_copy_code(html)
 
@@ -153,6 +158,7 @@ module Parrot
         layout = Tilt.new("#{app_root}/views/layout.html.erb")
         html = update_internal_links(layout.render { markdown_string("### Categories\n\n#{listing}\n").render })
         copy_image_assets(html)
+        inject_menu(html)
         inject_search(html)
         inject_copy_code(html)
         meta = { 'title' => 'Categories', 'description' => 'Every category on this blog.' }
@@ -185,6 +191,7 @@ module Parrot
         layout = Tilt.new("#{app_root}/views/layout.html.erb")
         html = update_internal_links(layout.render { markdown(source).render })
         copy_image_assets(html)
+        inject_menu(html)
 
         title = html.at('head title')
         title.content = 'Page not found' if title
@@ -195,37 +202,6 @@ module Parrot
         (html.at('head') || html).add_child(robots)
 
         output = File.join(build_path, '404.html')
-        File.write(output, html)
-        config.logger.info "Built #{output}"
-      end
-
-      # Builds public/about.html from views/about.md, the page the layout's nav
-      # links to. It takes the same optional `<!-- key: value -->` header as a
-      # post (title, description, lang) but isn't one: it stays out of the
-      # index listing and the feed, and is listed in the sitemap. A previously
-      # built page is removed once views/about.md is gone.
-      def build_about_page
-        source = File.join(app_root, 'views', 'about.md')
-        output = File.join(build_path, 'about.html')
-
-        unless File.exist?(source)
-          FileUtils.rm_f(output)
-          return
-        end
-
-        meta = post_metadata(source)
-        layout = Tilt.new("#{app_root}/views/layout.html.erb")
-        body = markdown(source).render
-
-        html = update_internal_links(layout.render { body })
-        copy_image_assets(html)
-        inject_search(html)
-        inject_copy_code(html)
-
-        meta['title'] ||= html.at('main h1')&.text
-        meta['description'] ||= summarize(body)
-        apply_page_meta(html, 'about.html', meta, kind: :about)
-
         File.write(output, html)
         config.logger.info "Built #{output}"
       end
@@ -245,6 +221,7 @@ module Parrot
 
         html = update_internal_links(text)
         copy_image_assets(html)
+        inject_menu(html)
         inject_search(html)
         inject_copy_code(html)
         html = inject_scripts(html)
@@ -397,43 +374,57 @@ module Parrot
         config.logger.info "Copied #{File.basename(source_path)} to #{target_dir}"
       end
 
+      # Writes public/app.css. The styles for what Parrot adds to pages (the
+      # search box, copy button and menu) come first, each from the blog's
+      # css/ or else the skeleton, so the rest of css/ can override them.
+      # Each is compiled on its own, so one that fails to compile doesn't
+      # take the others with it.
       def compile_css
-        css_files = Dir[File.join(app_root, 'css', '**', '*.{scss,css}')]
-        combined_scss = css_files.map { |file| File.read(file) }.join("\n")
+        defaults = [COPY_CODE_STYLESHEET, MENU_STYLESHEET]
+        defaults.unshift(SEARCH_STYLESHEET) if search_enabled?
+        own_files = Dir[File.join(app_root, 'css', '**', '*.{scss,css}')] -
+                    [SEARCH_STYLESHEET, COPY_CODE_STYLESHEET, MENU_STYLESHEET].map { |file| File.join(app_root, file) }
 
-        user_css =
-          begin
-            SassC::Engine.new(combined_scss, style: :compressed, syntax: :scss).render
-          rescue SassC::SyntaxError => e
-            puts "SassC Compilation Error: #{e.message}"
-            ''
-          end
+        sources = defaults.map { |file| File.read(Skeleton.path(app_root, file)) }
+        sources << own_files.map { |file| File.read(file) }.join("\n")
+        parts = sources.map { |source| compile_scss(source) }
+
         # Compressed output starts with a byte-order mark when the CSS has
         # non-ASCII characters. Anything put before it would turn the BOM
         # into part of the first selector, so the browser drops that rule;
         # it's moved back to the very start of app.css below.
-        bom = user_css.delete_prefix!(BOM) ? BOM : ''
+        bom = parts.map { |css| css.delete_prefix!(BOM) }.any? ? BOM : ''
 
         # The syntax-highlight theme must always ship, even when the user's
-        # own stylesheet is empty or fails to compile. The copy button's and
-        # search box's default styles go first, so the user's own rules
-        # override them.
-        compiled_css = "#{copy_code_css}\n#{user_css}\n#{syntax_highlight_css}"
-        compiled_css = "#{search_css}\n#{compiled_css}" if search_enabled?
+        # own stylesheet is empty or fails to compile.
+        compiled_css = [*parts, syntax_highlight_css].join("\n")
 
         target_path = File.join(build_path, 'app.css')
         File.write(target_path, "#{bom}#{compiled_css}")
         config.logger.info "Compiled and minified CSS written to #{target_path}"
       end
 
+      # Compressed CSS from SCSS, or '' (with the error printed) when it
+      # doesn't compile.
+      def compile_scss(source)
+        SassC::Engine.new(source, style: :compressed, syntax: :scss).render
+      rescue SassC::SyntaxError => e
+        puts "SassC Compilation Error: #{e.message}"
+        ''
+      end
+
+      # Writes public/app.js: the dropdown menu's script, then the blog's own
+      # javascripts/app.js.
       def compile_js
-        FileUtils.cp(File.join(app_root, 'javascripts', 'app.js'), File.join(build_path))
-        config.logger.info "Copied app.js to #{build_path}"
+        user_js = File.read(File.join(app_root, 'javascripts', 'app.js'))
+        File.write(File.join(build_path, 'app.js'), "#{File.read(MENU_SCRIPT)}\n#{user_js}")
+        config.logger.info "Built app.js in #{build_path}"
       end
 
       def run
         config.logger.info "Building application at #{app_root}"
         reset_posts_metadata
+        check_menu_page_names!
         check_reserved_post_names!
         FileUtils.rm_rf('public')
         FileUtils.mkdir('public')
@@ -442,7 +433,7 @@ module Parrot
         build_category_pages
         build_categories_page
         build_404_page
-        build_about_page
+        build_menu_pages
         build_sitemap
         build_robots
         build_feed
@@ -455,7 +446,7 @@ module Parrot
       end
 
       # Writes public/sitemap.xml listing the index, every post and category
-      # page, and the about page, each URL
+      # page, and the menu pages, each URL
       # built from the layout's base URL. Posts carry a <lastmod> from their
       # header `date`; the index carries the newest post's date. Skipped when
       # the layout declares no base URL.
@@ -481,7 +472,7 @@ module Parrot
           entries << { loc: "#{base}/#{name}", lastmod: iso_date(post_metadata(post_path)['date']) }
         end
 
-        entries << { loc: "#{base}/about.html" } if File.exist?(File.join(app_root, 'views', 'about.md'))
+        menu_page_paths.each_key { |name| entries << { loc: "#{base}/#{name}.html" } }
 
         entries << { loc: "#{base}/categories.html", lastmod: newest }
         posts_by_category.each do |slug, category|
@@ -590,14 +581,25 @@ module Parrot
           build_category_pages
           build_categories_page
           build_404_page
-          build_about_page
+          build_menu_pages
           build_sitemap
           build_robots
           build_feed
         when 'views/404.md'
           build_404_page
-        when 'views/about.md'
-          build_about_page
+        when %r{\Aviews/menu/[^/]+\.md\z}
+          # A menu page's title shows in the dropdown on every page, and one
+          # added or removed changes the dropdown too, so every page is
+          # rebuilt along with the menu pages themselves.
+          check_menu_page_names!
+          check_reserved_post_names!
+          remove_menu_page(File.basename(path, '.md')) unless File.exist?(path)
+          build_index_page
+          build_posts
+          build_category_pages
+          build_categories_page
+          build_404_page
+          build_menu_pages
           build_sitemap
         when 'config.yaml'
           # post_listing settings change the index; post_date_format also
@@ -605,13 +607,16 @@ module Parrot
           # per_page changes how many index pages there are, so the sitemap
           # listing them is rewritten too. Category pages share all of that.
           # search can be switched on or off, which touches every page, the
-          # stylesheet and search.js itself.
+          # stylesheet and search.js itself. menu picks the menu pages, which
+          # show in the dropdown on every page.
+          check_menu_page_names!
+          check_reserved_post_names!
           build_index_page
           build_posts
           build_category_pages
           build_categories_page
           build_404_page
-          build_about_page
+          build_menu_pages
           build_sitemap
           build_search
           compile_css
@@ -648,24 +653,27 @@ module Parrot
       private
 
       # Fails the build, before anything is written, when a post's filename
-      # is one of RESERVED_POST_NAMES, or the name of a category page this
-      # build will write (category-ruby.html), and so would overwrite (or be
-      # overwritten by) a page Parrot generates itself.
+      # is one of RESERVED_POST_NAMES, the name of a category page this
+      # build will write (category-ruby.html) or of a menu page it will write
+      # (views/menu/projects.md), and so would overwrite (or be overwritten
+      # by) a page Parrot generates itself.
       def check_reserved_post_names!
         category_pages = posts_by_category.flat_map do |slug, category|
           (1..paginated_posts(category[:posts]).length).map { |number| category_filename(slug, number).delete_suffix('.html') }
         end
 
+        menu_pages = menu_page_paths.keys.map(&:downcase)
+
         clashes = Dir["#{app_root}/views/posts/*.md"].select do |post_path|
           name = File.basename(post_path, '.md')
-          name.match?(RESERVED_POST_NAMES) || category_pages.include?(name.downcase)
+          name.match?(RESERVED_POST_NAMES) || category_pages.include?(name.downcase) || menu_pages.include?(name.downcase)
         end
         return if clashes.empty?
 
         names = clashes.map { |post_path| "views/posts/#{File.basename(post_path)}" }.join(', ')
         raise "Reserved post filename: #{names}. index*, 404, about, categories, category, now, post(s), " \
-              "note(s) and category page names (category-<name>) can't be used as post names; " \
-              'rename the post to build.'
+              'note(s), category page names (category-<name>) and menu page names (views/menu/<name>.md) ' \
+              "can't be used as post names; rename the post to build."
       end
 
       # The posts this build writes out: every views/posts/*.md, minus drafts
@@ -733,7 +741,8 @@ module Parrot
       # base URL comes from the layout (its canonical/og:url tag); the generated
       # file's path is appended so each page points at itself. `meta` is the
       # post's header Hash (empty for the index). `kind` is :index, :post,
-      # :about or :category; only a post gets article metadata.
+      # :about, :page (another menu page) or :category; only a post gets
+      # article metadata.
       def apply_page_meta(html, output_name, meta = {}, kind: index_page?(output_name) ? :index : :post)
         title = meta['title']
 
@@ -798,7 +807,7 @@ module Parrot
       end
 
       # Adds a schema.org JSON-LD block: BlogPosting for a post, AboutPage for
-      # the about page, WebSite for the index. Values are read back from the
+      # the about page, WebPage for another menu page, WebSite for the index. Values are read back from the
       # <head> this method has just filled.
       def inject_json_ld(html, kind, meta, page_url)
         site_name = meta_content(html, 'meta[property="og:site_name"]')
@@ -806,7 +815,7 @@ module Parrot
 
         data = {
           '@context' => 'https://schema.org',
-          '@type' => { post: 'BlogPosting', about: 'AboutPage', category: 'CollectionPage', index: 'WebSite' }.fetch(kind),
+          '@type' => { post: 'BlogPosting', about: 'AboutPage', page: 'WebPage', category: 'CollectionPage', index: 'WebSite' }.fetch(kind),
           'url' => page_url
         }
 
@@ -827,7 +836,7 @@ module Parrot
           author = meta_content(html, 'meta[name="author"]')
           data['author'] = { '@type' => 'Person', 'name' => author } if author
           data['publisher'] = { '@type' => 'Organization', 'name' => site_name } if site_name
-        when :about, :category
+        when :about, :page, :category
           data['name'] = html.at('head title')&.text
           data['description'] = description if description
         else
@@ -1156,6 +1165,7 @@ module Parrot
       def reset_posts_metadata
         @sorted_posts_metadata = nil
         @posts_by_category = nil
+        @menu_items = nil
       end
 
       # Renders the Markdown post listing per config.yaml's

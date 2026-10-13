@@ -17,7 +17,8 @@ module Parrot
     serve: SubcommandEntry.new('serve', 'Start development server locally'),
     post: SubcommandEntry.new('post --title <post title>', 'Add new post with a title'),
     'list-tags': SubcommandEntry.new('list-tags', 'List the tags used in posts'),
-    'list-categories': SubcommandEntry.new('list-categories', 'List the categories used in posts')
+    'list-categories': SubcommandEntry.new('list-categories', 'List the categories used in posts'),
+    'copy-assets': SubcommandEntry.new('copy-assets', "Copy in skeleton styles and icons the blog doesn't have yet")
   }.freeze
 
   USAGE_LINE = 'parrot [options] [subcommand] [args]'.freeze
@@ -41,6 +42,9 @@ module Parrot
         - List the tags or categories already in use
           parrot list-tags
           parrot list-categories
+
+        - Copy in styles and icons a newer Parrot added, to edit them in an older blog
+          parrot copy-assets
     HELP_TEXT
 
   HELP_HEADER =

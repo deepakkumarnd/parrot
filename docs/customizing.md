@@ -7,7 +7,32 @@ Everything a reader sees comes from four places in your blog:
 
 `views/layout.html.erb` wraps every page; `<%= yield %>` is where the rendered
 Markdown goes. Edit it to change your site name, tagline, nav and footer. The
-nav links to Home, Categories and About by default.
+nav links to Home and Categories, followed by a dropdown menu of your pages
+(see [The menu](#the-menu)).
+
+## The menu
+
+The nav ends with a dropdown linking the pages in `views/menu/`. The build fills
+the empty `<div class="menu"></div>` in `views/layout.html.erb` with a
+`<details>` element, so it opens and closes without JavaScript; a script
+Parrot adds to `public/app.js` also closes it on a click elsewhere or on
+Escape. When
+there are no menu pages, the placeholder is removed. A layout without the
+placeholder gets no dropdown.
+
+Its styles are in `css/_menu.scss`. Edit that file to restyle the menu. The
+build compiles it ahead of the rest of `css/`, so you can also override it from
+`css/app.scss`, as long as you use selectors at least as specific as the ones in
+`_menu.scss` (`.menu .menu-items a`, not `.menu-items a`). See
+[Parrot's own styles](#parrots-own-styles) for blogs that don't have the file.
+
+| Class | Element |
+| --- | --- |
+| `.menu` | The `<details>` dropdown; its `<summary>` is the button |
+| `.menu-items` | The list of links that drops down |
+
+Which pages it lists, and its button text, are set in
+[`config.yaml`](configuration.md#the-menu).
 
 ## Set your site URL
 
@@ -56,8 +81,27 @@ Remove the button from the layout to follow the system setting only.
 ## Styles and scripts
 
 Every `.scss` and `.css` file under `css/` is concatenated and compiled to
-`public/app.css`. `javascripts/app.js` is copied to `public/app.js` and loaded
-with `defer`. The skeleton builds on [Simple.css](https://simplecss.org/).
+`public/app.css`, after [Parrot's own styles](#parrots-own-styles).
+`javascripts/app.js` is copied to `public/app.js`, after the scripts Parrot
+ships itself (such as the [menu](#the-menu)'s), and loaded with `defer`. The skeleton builds on [Simple.css](https://simplecss.org/).
+
+### Parrot's own styles
+
+The styles for what the build adds to pages are files in your blog's `css/`,
+so you can edit them:
+
+| File | Styles |
+| --- | --- |
+| `css/_search.scss` | The [search box](#search), only while search is on |
+| `css/_copy_code.scss` | The [Copy code button](#copy-buttons-on-code-blocks) |
+| `css/_menu.scss` | The [dropdown menu](#the-menu) |
+
+Each is compiled on its own, ahead of the rest of `css/`, so your other files
+can override them, and a mistake in one doesn't drop the others. A blog made
+by an older Parrot may not have them; the build then uses Parrot's own copies.
+Run `parrot copy-assets` to copy them in, along with any of the skeleton's
+icons the blog lacks. It never overwrites a file you have, and copies no
+scripts: Parrot puts its scripts into every build itself.
 
 The build adds these classes, so you can style them:
 
@@ -77,11 +121,10 @@ stays hidden until the script has loaded. To put it somewhere else, add an
 empty `<div class="search"></div>` where you want it in `views/layout.html.erb`.
 The build fills that in, or removes it when search is off.
 
-The box ships with a few default styles, all scoped under `.search` so a
+The box's styles are in `css/_search.scss`, all scoped under `.search` so a
 theme's plain `input` or `li` rules don't leak in. They use Simple.css's color
-variables when your theme defines them. These styles come before your own CSS
-in `app.css`, so rules in `css/app.scss` with the same selectors (for example
-`.search .search-input`) override them:
+variables when your theme defines them. Edit that file, or override it from
+`css/app.scss` with the same selectors (for example `.search .search-input`):
 
 | Class | Element |
 | --- | --- |
@@ -111,8 +154,8 @@ the page.
 
 ### Changing how it looks
 
-Parrot ships default styles for the button. Override them in `css/app.scss`
-using these classes:
+The button's styles are in `css/_copy_code.scss`. Edit that file, or override
+it in `css/app.scss` using these classes:
 
 | Class         | What it styles                                  |
 | ------------- | ----------------------------------------------- |
@@ -149,11 +192,13 @@ A parrot icon ships in three forms: `images/favicon.ico`, `images/favicon.svg`
 and `images/apple-touch-icon.png`. Replace them with your own. Any `images/…`
 file referenced from an `<img>` or `<link>` is copied into the build.
 
-## The About and 404 pages
+## Menu pages and the 404 page
 
-- `views/about.md` is built to `about.html` and linked from the nav. It takes the
-  same `title`, `description` and `lang` header as a post, is listed in the
-  sitemap, and stays out of the index and the feed. Delete the file and its nav
-  link if you don't want an About page.
+- Each `views/menu/<name>.md` is built to `<name>.html` and linked from the
+  [menu](#the-menu). A new blog has five: `about` (About me), `now` (what
+  you're doing now), `projects`, `apps` (HTML apps you host) and `photos`. Each
+  takes the same `title`, `description` and `lang` header as a post, is listed
+  in the sitemap, and stays out of the index and the feed. Add a page by adding
+  a file; remove one by deleting it or leaving it out of `menu.pages`.
 - `views/404.md` is built to `404.html`, marked `noindex` and kept out of the
   sitemap and feed.

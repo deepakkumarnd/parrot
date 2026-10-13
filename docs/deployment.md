@@ -21,7 +21,7 @@ Besides one HTML page per post, the build writes:
 | --- | --- |
 | `index.html`, `index2.html`, … | The post listing. See [Pagination](configuration.md#pagination). |
 | `categories.html`, `category-*.html` | Category pages. See [Categories](configuration.md#categories). |
-| `about.html` | Built from `views/about.md`. |
+| `about.html`, `now.html`, … | Built from `views/menu/*.md`. See [The menu](configuration.md#the-menu). |
 | `404.html` | Built from `views/404.md`, marked `noindex`. |
 | `sitemap.xml` | Every page. Posts have a `<lastmod>` from their `date`; the index uses the newest post's date. |
 | `feed.xml` | An RSS 2.0 feed, newest post first, linked from every page for autodiscovery. |
@@ -43,9 +43,12 @@ same locally.
 - **While running**, each saved file rebuilds only what it affects:
   - A post: that post, plus the index and category pages, `sitemap.xml` and
     `feed.xml`. The same goes for adding or removing a post.
-  - `views/404.md` or `views/about.md`: that page.
+  - `views/404.md`: that page.
+  - A page in `views/menu/`: every page, since its title is in the menu on
+    each one, plus `sitemap.xml`.
   - Anything under `css/`, `javascripts/app.js` or an image: that asset.
-  - `config.yaml`: the index, category pages, `sitemap.xml` and every post.
+  - `config.yaml`: the index, category pages, menu pages, `sitemap.xml` and
+    every post.
   - `views/layout.html.erb`: everything.
 
 `public/.checksum` is gitignored in a new blog; don't deploy it.

@@ -4,6 +4,7 @@ require_relative 'commands/build'
 require_relative 'commands/serve'
 require_relative 'commands/post'
 require_relative 'commands/list'
+require_relative 'commands/copy_assets'
 
 module Parrot
   class Runner

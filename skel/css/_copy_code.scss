@@ -1,0 +1,73 @@
+// The Copy code button on code blocks, and the "Copied" message it shows.
+// The build compiles this file ahead of the rest of css/, so app.scss can
+// override it.
+
+.code-block {
+  position: relative;
+  margin: 1rem 0;
+
+  > pre,
+  > .highlighter-rouge {
+    margin: 0;
+  }
+
+  .copy-code {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin: 0;
+    padding: 0.3rem 0.55rem;
+    font-size: 0.8rem;
+    font-weight: normal;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 6px;
+    background: rgba(40, 40, 40, 0.7);
+    color: #f8f8f2;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.15s;
+
+    &:hover,
+    &:focus-visible {
+      opacity: 1;
+      background: rgba(40, 40, 40, 0.9);
+      border-color: rgba(255, 255, 255, 0.5);
+    }
+  }
+
+  // Drawn in the button's text colour, in the shape of images/copy-icon.svg.
+  .copy-code-icon {
+    display: inline-block;
+    width: 1rem;
+    height: 1rem;
+    background: currentColor;
+    -webkit-mask: url(images/copy-icon.svg) center / contain no-repeat;
+    mask: url(images/copy-icon.svg) center / contain no-repeat;
+  }
+}
+
+.copy-toast {
+  position: fixed;
+  z-index: 20;
+  left: 50%;
+  bottom: 1.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  background: var(--text, #212121);
+  color: var(--bg, #fff);
+  font-size: 0.9rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 0.5rem);
+  transition: opacity 0.2s, transform 0.2s;
+
+  &.is-visible {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
