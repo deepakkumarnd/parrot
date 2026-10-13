@@ -499,56 +499,192 @@ describe Parrot::Commands do
       end
     end
 
-    context 'about page' do
+    context 'menu pages' do
       let(:build_config) { Parrot::Config.new(File.join(Dir.pwd, 'blog'), Logger.new(File::NULL)) }
       let(:command) { Parrot::Commands::BuildCommand.new([], build_config) }
+      let(:menu_pages) { %w[about now projects apps photos] }
 
-      before { command.run }
-
-      it 'builds about.html with its own title, description and social links' do
-        page = File.read('blog/public/about.html')
-        expect(page).to include('<title>About</title>')
-        expect(page).to include('<meta name="description" content="Who writes this blog, and where else to find them.">')
-        expect(page).to include('<meta property="og:url" content="https://example.com/about.html">')
-        expect(page).to include('href="https://github.com/your-username"')
-        expect(page.scan('<h1').size).to eq(1)
+      def nav(name)
+        File.read("blog/public/#{name}")[%r{<nav class="site-nav">.*?</nav>}m]
       end
 
-      it 'is an AboutPage, not an article' do
-        page = File.read('blog/public/about.html')
-        expect(page).to include('<meta property="og:type" content="website">')
-        expect(page).not_to include('article:published_time')
-        expect(page).to include('"@type": "AboutPage"')
+      def write_menu_config(menu)
+        config_path = 'blog/config.yaml'
+        settings = YAML.safe_load_file(config_path)
+        settings['menu'] = menu
+        File.write(config_path, settings.to_yaml)
       end
 
-      it 'is linked from the nav on every page' do
-        %w[index.html sample.html about.html 404.html].each do |name|
-          nav = File.read("blog/public/#{name}")[%r{<nav class="site-nav">.*?</nav>}m]
-          expect(nav).to include('<a href="/about.html">About</a>')
+      context 'with the skeleton blog' do
+        before { command.run }
+
+        it 'builds every menu page' do
+          menu_pages.each do |name|
+            expect(File.exist?("blog/public/#{name}.html")).to be true
+          end
+        end
+
+        it 'builds about.html with its own title, description and social links' do
+          page = File.read('blog/public/about.html')
+          expect(page).to include('<title>About me</title>')
+          expect(page).to include('<meta name="description" content="Who writes this blog, and where else to find them.">')
+          expect(page).to include('<meta property="og:url" content="https://example.com/about.html">')
+          expect(page).to include('href="https://github.com/your-username"')
+          expect(page.scan('<h1').size).to eq(1)
+        end
+
+        it 'makes the about page an AboutPage and the others a WebPage, not articles' do
+          page = File.read('blog/public/about.html')
+          expect(page).to include('<meta property="og:type" content="website">')
+          expect(page).not_to include('article:published_time')
+          expect(page).to include('"@type": "AboutPage"')
+          expect(File.read('blog/public/now.html')).to include('"@type": "WebPage"')
+        end
+
+        it 'lists the menu pages in a dropdown in the nav on every page, in config order' do
+          %w[index.html sample.html about.html now.html categories.html 404.html].each do |name|
+            menu = Nokogiri::HTML(nav(name)).at('details.menu')
+            expect(menu.at('summary').text).to eq('Menu')
+            expect(menu.css('.menu-items a').map { |link| [link['href'], link.text] }).to eq(
+              [['/about.html', 'About me'], ['/now.html', 'Now'], ['/projects.html', 'Projects'],
+               ['/apps.html', 'Apps'], ['/photos.html', 'Photos']]
+            )
+            expect(nav(name)).not_to include('<div class="menu">')
+          end
+        end
+
+        it 'puts them in the sitemap but not the index listing or the feed' do
+          sitemap = File.read('blog/public/sitemap.xml')
+          menu_pages.each { |name| expect(sitemap).to include("<loc>https://example.com/#{name}.html</loc>") }
+          expect(File.read('blog/public/index.html')[%r{<main>.*?</main>}m]).not_to include('about.html')
+          expect(File.read('blog/public/feed.xml')).not_to include('about.html')
+        end
+
+        it 'ships the dropdown styles and script ahead of the blog\'s own' do
+          styles = File.read('blog/public/app.css')
+          expect(styles).to include('.menu .menu-items{')
+          expect(styles.index('.menu .menu-items{')).to be < styles.index('.site-header{')
+
+          script = File.read('blog/public/app.js')
+          expect(script).to start_with(File.read(Parrot::Menu::MENU_SCRIPT))
+          expect(script).to include(File.read('blog/javascripts/app.js'))
+        end
+
+        it 'uses the blog\'s own edits to the dropdown styles' do
+          File.write('blog/css/_menu.scss', ".menu { .menu-items { min-width: 42rem; } }\n")
+          command.build('css/_menu.scss')
+
+          expect(File.read('blog/public/app.css')).to include('.menu .menu-items{min-width:42rem}')
+          expect(File.read('blog/public/app.css')).not_to include('translateX(-50%)')
+        end
+
+        it 'rebuilds a menu page, and the dropdown everywhere, when it changes' do
+          File.write('blog/views/menu/now.md', "# Doing now\n\nSomething new the author is doing right now.\n")
+          command.build('views/menu/now.md')
+
+          page = File.read('blog/public/now.html')
+          expect(page).to include('<title>Doing now</title>')
+          expect(page).to include('Something new the author is doing right now.')
+          expect(nav('index.html')).to include('<a href="/now.html">Doing now</a>')
+        end
+
+        it 'removes a deleted menu page, its sitemap entry and its dropdown entry' do
+          File.delete('blog/views/menu/now.md')
+          command.build('views/menu/now.md')
+
+          expect(File.exist?('blog/public/now.html')).to be false
+          expect(File.read('blog/public/sitemap.xml')).not_to include('now.html')
+          expect(nav('index.html')).not_to include('now.html')
+        end
+
+        it 'drops a page left out of menu.pages when config.yaml changes' do
+          write_menu_config('label' => 'More', 'pages' => %w[projects about])
+          command.build('config.yaml')
+
+          expect(File.exist?('blog/public/now.html')).to be false
+          links = Nokogiri::HTML(nav('index.html')).css('.menu-items a').map { |link| link['href'] }
+          expect(links).to eq(%w[/projects.html /about.html])
+          expect(nav('index.html')).to include('<summary>More</summary>')
         end
       end
 
-      it 'is in the sitemap but not the index listing or the feed' do
-        expect(File.read('blog/public/sitemap.xml')).to include('<loc>https://example.com/about.html</loc>')
-        expect(File.read('blog/public/index.html')[%r{<main>.*?</main>}m]).not_to include('about.html')
-        expect(File.read('blog/public/feed.xml')).not_to include('about.html')
+      it 'builds and lists every menu page, by name, without menu.pages' do
+        write_menu_config({})
+        File.write('blog/views/menu/books.md', "# Books\n")
+        command.run
+
+        links = Nokogiri::HTML(nav('index.html')).css('.menu-items a').map { |link| link['href'] }
+        expect(links).to eq(%w[/about.html /apps.html /books.html /now.html /photos.html /projects.html])
       end
 
-      it 'is rebuilt by the watcher when views/about.md changes' do
-        File.write('blog/views/about.md', "# About me\n\nSomething new about the author of this blog.\n")
-        command.build('views/about.md')
+      it 'titles a menu page by its first heading of any level when it has no header title' do
+        File.write('blog/views/menu/about.md', "### About Me\n\nHi.\n")
+        command.run
 
-        page = File.read('blog/public/about.html')
-        expect(page).to include('<title>About me</title>')
-        expect(page).to include('Something new about the author of this blog.')
+        expect(nav('index.html')).to include('<a href="/about.html">About Me</a>')
+        expect(File.read('blog/public/about.html')).to include('<title>About Me</title>')
       end
 
-      it 'is removed, along with its sitemap entry, when views/about.md is deleted' do
-        File.delete('blog/views/about.md')
-        command.build('views/about.md')
+      it 'titles a menu page by its name in title case when there is no title or heading' do
+        write_menu_config({})
+        File.write('blog/views/menu/my-books.md', "Some books.\n")
+        command.run
+
+        expect(nav('index.html')).to include('<a href="/my-books.html">My Books</a>')
+        expect(File.read('blog/public/my-books.html')).to include('<title>My Books</title>')
+      end
+
+      it 'skips a page menu.pages lists but views/menu lacks' do
+        write_menu_config('pages' => %w[about missing])
+        command.run
+
+        links = Nokogiri::HTML(nav('index.html')).css('.menu-items a').map { |link| link['href'] }
+        expect(links).to eq(%w[/about.html])
+      end
+
+      it 'falls back to the skeleton\'s dropdown styles for blogs without them' do
+        File.delete('blog/css/_menu.scss')
+        command.run
+
+        expect(File.read('blog/public/app.css')).to include('.menu .menu-items{')
+      end
+
+      it 'drops the placeholder when there are no menu pages' do
+        FileUtils.rm_rf('blog/views/menu')
+        command.run
+
+        expect(nav('index.html')).not_to include('class="menu"')
+      end
+
+      it 'ignores an older blog\'s views/about.md' do
+        FileUtils.rm_rf('blog/views/menu')
+        File.write('blog/views/about.md', "# About\n\nAn older blog's about page.\n")
+        command.run
 
         expect(File.exist?('blog/public/about.html')).to be false
-        expect(File.read('blog/public/sitemap.xml')).not_to include('about.html')
+        expect(nav('index.html')).not_to include('about.html')
+      end
+
+      it 'leaves a layout without the placeholder as it is' do
+        layout = File.read('blog/views/layout.html.erb').sub('<div class="menu"></div>', '<a href="/about.html">About</a>')
+        File.write('blog/views/layout.html.erb', layout)
+        command.run
+
+        expect(nav('index.html')).not_to include('<details')
+        expect(File.exist?('blog/public/about.html')).to be true
+      end
+
+      it 'fails the build on a menu page named like a generated page' do
+        File.write('blog/views/menu/categories.md', "# Clash\n")
+        write_menu_config({})
+
+        expect { command.run }.to raise_error(%r{Reserved menu page filename: views/menu/categories\.md})
+      end
+
+      it 'fails the build on a post named like a menu page' do
+        File.write('blog/views/posts/projects.md', "# Clash\n")
+
+        expect { command.run }.to raise_error(%r{Reserved post filename: views/posts/projects\.md})
       end
     end
 
@@ -721,7 +857,7 @@ describe Parrot::Commands do
         File.write('blog/views/posts/about.md', "# Clash\n")
 
         expect { command.build('views/posts/about.md') }.to raise_error(/Reserved post filename/)
-        expect(File.read('blog/public/about.html')).to include('<title>About</title>')
+        expect(File.read('blog/public/about.html')).to include('<title>About me</title>')
       end
 
       it 'builds posts whose names only contain a reserved word' do
@@ -998,6 +1134,28 @@ describe Parrot::Commands do
         expect(File.read('blog/public/images/copy-icon.svg')).to eq(File.read('blog/images/copy-icon.svg'))
       end
 
+      it "uses the blog's own edits to the button's styles" do
+        File.write('blog/css/_copy_code.scss', ".code-block .copy-code { opacity: 0.3; }\n")
+        command.run
+
+        expect(File.read('blog/public/app.css')).to include('.code-block .copy-code{opacity:0.3}')
+        expect(File.read('blog/public/app.css')).not_to include('.copy-toast{')
+      end
+
+      it "falls back to the skeleton's button styles for an older blog without them" do
+        File.delete('blog/css/_copy_code.scss')
+        command.run
+
+        expect(File.read('blog/public/app.css')).to include('.copy-code{', '.copy-toast{')
+      end
+
+      it "keeps the button's styles when the blog's own CSS doesn't compile" do
+        File.write('blog/css/app.scss', ".broken {\n")
+        expect { command.run }.to output(/SassC Compilation Error/).to_stdout
+
+        expect(File.read('blog/public/app.css')).to include('.copy-code{', '.menu .menu-items{')
+      end
+
       it "ships the blog's own copy icon" do
         File.write('blog/images/copy-icon.svg', '<svg>mine</svg>')
         command.run
@@ -1009,7 +1167,8 @@ describe Parrot::Commands do
         File.delete('blog/images/copy-icon.svg')
         command.run
 
-        expect(File.read('blog/public/images/copy-icon.svg')).to eq(File.read(Parrot::CopyCode::DEFAULT_COPY_ICON))
+        expect(File.read('blog/public/images/copy-icon.svg'))
+          .to eq(File.read(File.join(Parrot::Skeleton::DIR, Parrot::CopyCode::COPY_ICON)))
         expect(File.exist?('blog/images/copy-icon.svg')).to be false
       end
 

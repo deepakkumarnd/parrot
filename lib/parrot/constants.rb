@@ -50,3 +50,7 @@ DEFAULT_SEARCH_PLACEHOLDER = 'Search posts'.freeze
 
 # Most suggestions the search box lists for one query.
 SEARCH_SUGGESTION_LIMIT = 10
+
+# Text of the header's dropdown menu button, unless config.yaml's
+# menu.label sets one.
+DEFAULT_MENU_LABEL = 'Menu'.freeze

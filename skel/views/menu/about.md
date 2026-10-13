@@ -1,12 +1,12 @@
 <!--
-title: About
+title: About me
 description: Who writes this blog, and where else to find them.
 -->
 
-# About
+# About me
 
 Write a few lines about yourself and this blog here. This page is built from
-`views/about.md` and linked from the navigation at the top of every page.
+`views/menu/about.md` and linked from the menu at the top of every page.
 
 ## Find me elsewhere
 

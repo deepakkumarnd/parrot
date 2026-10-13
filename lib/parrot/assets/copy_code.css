@@ -1,7 +1,0 @@
-.code-block{position:relative;margin:1rem 0}
-.code-block>pre,.code-block>.highlighter-rouge{margin:0}
-.code-block .copy-code{position:absolute;top:.5rem;right:.5rem;display:inline-flex;align-items:center;gap:.35rem;margin:0;padding:.3rem .55rem;font-size:.8rem;font-weight:normal;border:1px solid rgba(255,255,255,.25);border-radius:6px;background:rgba(40,40,40,.7);color:#f8f8f2;line-height:1;cursor:pointer;opacity:.7;transition:opacity .15s}
-.code-block .copy-code:hover,.code-block .copy-code:focus-visible{opacity:1;background:rgba(40,40,40,.9);border-color:rgba(255,255,255,.5)}
-.code-block .copy-code-icon{display:inline-block;width:1rem;height:1rem;background:currentColor;-webkit-mask:url(images/copy-icon.svg) center/contain no-repeat;mask:url(images/copy-icon.svg) center/contain no-repeat}
-.copy-toast{position:fixed;z-index:20;left:50%;bottom:1.5rem;padding:.5rem 1rem;border-radius:6px;background:var(--text,#212121);color:var(--bg,#fff);font-size:.9rem;box-shadow:0 4px 12px rgba(0,0,0,.2);opacity:0;pointer-events:none;transform:translate(-50%,.5rem);transition:opacity .2s,transform .2s}
-.copy-toast.is-visible{opacity:1;transform:translate(-50%,0)}

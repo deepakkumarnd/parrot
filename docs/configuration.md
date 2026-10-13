@@ -100,6 +100,40 @@ hyphens and anything other than letters, digits and hyphens dropped. Names that
 end up the same (such as "C++" and "C") share one page, and the build warns
 about it. Category pages are listed in `sitemap.xml`.
 
+## The menu
+
+The header's dropdown menu links the pages in `views/menu/`: each
+`views/menu/<name>.md` is built to `<name>.html` and titled in the menu by its
+header `title`, or else its first Markdown heading (of any level), or else its
+file name in title case (`my-projects.md` becomes "My Projects").
+
+```yaml
+menu:
+  label: "Menu"
+  pages:
+    - about
+    - now
+    - projects
+    - apps
+    - photos
+```
+
+| Key | Default | What it does |
+| --- | --- | --- |
+| `label` | `"Menu"` | Text on the dropdown's button. |
+| `pages` | every page, by name | Which pages to build and list, by filename without `.md`, in menu order. A page left out isn't built at all; a name with no matching file is skipped with a warning. |
+
+A menu page can't be named `index`, `index2`, …, `404`, `categories` or
+`category-…`, since those are pages Parrot generates, and a post can't share a
+menu page's name. Either fails the build.
+
+Blogs created before the menu existed have their about page at
+`views/about.md`, which is no longer built: move it to `views/menu/about.md`.
+To get the dropdown, add `<div class="menu"></div>` to the nav in
+`views/layout.html.erb`, and run `parrot copy-assets` to get the menu's
+editable styles. See [Customizing](customizing.md#the-menu) to restyle
+it.
+
 ## Search
 
 With search on, every page except the 404 page gets a search box in its header that suggests posts

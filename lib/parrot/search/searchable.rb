@@ -7,10 +7,14 @@ module Parrot
     # class to provide build_path, config, posts_config, sorted_posts_metadata
     # and PostHeader's post_tags / post_category.
     module Searchable
-      # Browser-side search and the search box's default styles, shipped by
-      # the gem into builds that turn search on.
+      # Browser-side search, shipped by the gem into builds that turn search
+      # on.
       SEARCH_SCRIPT = File.expand_path('../assets/search.js', __dir__)
-      SEARCH_STYLESHEET = File.expand_path('../assets/search.css', __dir__)
+
+      # The search box's styles, from the blog so they can be edited. Blogs
+      # created before search existed don't have them, so the skeleton's
+      # copy is used instead.
+      SEARCH_STYLESHEET = File.join('css', '_search.scss')
 
       # Adds the search box and <script src="search.js"> to a page when
       # config.yaml turns search on, hidden until search.js has wired it up.
@@ -89,11 +93,6 @@ module Parrot
       end
 
       private
-
-      # The search box's default styles, put ahead of the user's own CSS.
-      def search_css
-        File.read(SEARCH_STYLESHEET)
-      end
 
       # The `search` section of config.yaml, or {}.
       def search_settings
